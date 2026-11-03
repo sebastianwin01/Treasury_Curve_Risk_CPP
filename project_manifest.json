@@ -1,0 +1,27 @@
+{
+  "title": "Treasury Yield Curve Trading and Risk Analysis in C++",
+  "scope": "non_ml",
+  "language": "C++20",
+  "research_question": "How do changes in the US Treasury yield curve affect the risk and P&L of DV01-balanced 2Y-10Y relative-value positions?",
+  "core_instrument_tenors_years": [
+    2,
+    10
+  ],
+  "current_stage": "documentation_scaffold_not_implemented",
+  "required_modules": [
+    "fixed_coupon_pricing",
+    "ytm_solver",
+    "duration_convexity_dv01",
+    "curve_discounts",
+    "2y10y_trade_sizing",
+    "shock_scenarios",
+    "historical_analysis_if_feasible",
+    "validation"
+  ],
+  "excluded_modules": [
+    "machine_learning",
+    "hidden_markov_models",
+    "markov_switching_estimation",
+    "live_trading"
+  ]
+}

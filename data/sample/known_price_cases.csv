@@ -1,0 +1,4 @@
+case_id,face_value_usd,annual_coupon_rate_decimal,maturity_years,payments_per_year,ytm_nominal_annual_decimal,expected_price_usd,description
+semiannual_discount,100,0.04,2,2,0.05,98.1190129,standard 2-year coupon bond; price rounded
+semiannual_par,100,0.04,2,2,0.04,100,coupon rate equals YTM
+zero_coupon,100,0.0,2,2,0.05,90.5950644800,zero-coupon benchmark
