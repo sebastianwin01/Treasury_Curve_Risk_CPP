@@ -1,90 +1,96 @@
-# 02 — Mathematical specification and conventions
+# 02 — Mathematics and conventions (MVP)
 
-This is a teaching-first specification. It defines the minimum equations before a general production system is considered.
+These equations define the **hypothetical regular-coupon, two-YTM shock model** only. They do not specify real Treasury clean/dirty prices, settlement dates or a fitted zero curve.
 
-## A. Fixed-rate bond cash flows
+## 1. Bond and coupon cash flows
 
-For **face value** F in dollars, **annual coupon rate** c (decimal), **coupon frequency** m payments/year and N total future *regular* periods:
+For face `F > 0` (USD), annual fixed coupon rate `c ≥ 0` (decimal), coupons per year `m > 0`, and maturity `T > 0` years:
 
-- Each regular coupon equals `F * c / m` dollars.
-- The last payment also includes principal `F`.
-- At period k, cash flow is `CF_k = F*c/m + (k == N ? F : 0)`.
+- Require `N = mT` to be a **positive integer** (regular coupon periods).
+- Payment at period `k` is `CF_k = F*c/m + (k == N ? F : 0)`.
+- Payment time is `k/m` years, for `k = 1,...,N`.
 
-Assume equally spaced regular periods for M1. Real issuance dates, holidays, settlement, accrued interest and day-count conventions are future improvements; they must not be silently assumed away in a historical study.
+The last payment includes principal. There are no dated settlement or holiday conventions in this exercise.
 
-## B. Single-YTM pricing
+## 2. Price from nominal annual YTM
 
-With nominal annual YTM y (decimal), compounded m times/year:
+```math
+P(y)=\sum_{k=1}^{N}\frac{CF_k}{(1+y/m)^k}
+```
 
-`P(y) = SUM_{k=1}^N CF_k / (1+y/m)^k`
+Require `1+y/m > 0` and finite numeric inputs. This is a **single-bond YTM** calculation.
 
-Here P and CF are in dollars per specified F, y is annualized decimal, and the exponent k counts coupon periods. Require `(1+y/m) > 0` for this expression.
+**Independent test:** `F=100`, `c=0.04`, `T=2`, `m=2`, `y=0.05` gives four payments `(2,2,2,102)` and:
 
-**Manual benchmark:** F=100, c=0.04, m=2, T=2 years, N=4, y=0.05; cash flows `(2,2,2,102)` and:
+```text
+P = 2/1.025 + 2/1.025^2 + 2/1.025^3 + 102/1.025^4
+  ≈ 98.1190129 USD
+```
 
-`P = 2/1.025 + 2/1.025^2 + 2/1.025^3 + 102/1.025^4 ≈ 98.1190129`
+For the same bond at `y=0.04`, `P=100`. For a conventional positive-cash-flow bond, price falls when yield rises.
 
-At y=0.04, P=100. For fixed positive cash flows, higher y yields lower P.
+## 3. Recover YTM by bisection
 
-**Important distinction:** This one-rate pricing uses *bond YTM*, not a separate zero rate for each coupon date. Do not substitute a set of Treasury par yields for cash-flow-specific discount rates.
+Given a positive target price `P_market`, solve `P(y)-P_market=0` inside a valid bracket with opposite endpoint signs. Enforce a maximum iteration count and price/yield tolerances; reject invalid/unbracketed problems instead of returning a guessed yield.
 
-## C. Solve YTM from a known price
+## 4. Yield risk definitions
 
-Given a strictly positive bond price P_market, solve `f(y) = P(y) - P_market = 0` via bisection on a bracket where f changes sign. Check interval validity, number of iterations and absolute price/yield tolerances. Report failure on invalid/unbracketed inputs.
+For `P=P(y)` with yield `y` expressed as **annual decimal**:
 
-## D. Curve discounting
+```text
+ModifiedDuration = -(1/P) * (dP/dy)          [years]
+DV01             = -(dP/dy) * 0.0001        [USD per 1bp]
+Convexity        = (1/P) * (d²P/dy²)        [years²]
+```
 
-For discount factor D(t_k) dimensionless at time t_k years:
+Macaulay duration for regular cash flows:
 
-`P_curve = SUM_{k=1}^N CF_k * D(t_k)`.
+```math
+D_{\mathrm{Mac}}=\frac{1}{P}\sum_{k=1}^{N}\frac{(k/m)\,CF_k}{(1+y/m)^k}
+```
 
-For **continuously compounded zero rate** z(t): `D(t) = exp(-z(t) * t)`.
+Under the same compounding, `D_mod = D_Mac / (1+y/m)`.
 
-Compounding conventions must be explicit; `exp(-z*t)` is not interchangeable with `(1+y/m)^(-m*t)` unless rates have been converted properly. Specify interpolation in **discount factors**, **log discount factors** or **zero rates**, and document its numerical consequences.
+Second-order price approximation for a change `Δy` in **annual decimal**:
 
-## E. Yield sensitivities (one-factor)
+```math
+\Delta P \approx -P D_{\mathrm{mod}}\Delta y+\tfrac12 P C(\Delta y)^2.
+```
 
-`D_mod = -(1/P) * dP/dy` in years for y expressed as decimal per year.
+Finite-difference **dollar DV01 for a 1bp move** with `h=0.0001`:
 
-`DV01 = - (dP/dy) * 0.0001` in dollars per 1bp rise/fall magnitude, for a long position with conventional positive cash flows.
+```text
+DV01_fd ≈ [P(y-h) - P(y+h)] / 2
+```
 
-`C = (1/P) * d²P/dy²` (convexity, approximately years²).
+The denominator is `2` for **dollars per 1bp** (as opposed to dividing by `2h` for dollars per unit annual decimal yield). Compare analytic metrics with finite-difference checks under sensible tolerances.
 
-Approximate price change for `Δy` (annual decimal) is:
+## 5. Two-bond DV01 balancing and scenario P&L
 
-`ΔP ≈ -P * D_mod * Δy + (P*C/2) * (Δy)^2`.
+Let `q` denote a **signed face notional** in USD (+ long, − short), `F` the face amount used to quote the bond price, and `d` its **positive** DV01 per `F`.
 
-For a 1bp *finite-difference* parallel YTM bump (h=0.0001):
+- Total signed exposure magnitude per leg: `q/F * d`, preserving the sign of `q`.
+- For **long 2Y / short 10Y**, choose absolute face sizes so `|q2|/F2 * d2 = |q10|/F10 * d10`.
+- An instantaneous yield shock of `b` basis points corresponds to `Δy = b / 10000`.
 
-`DV01_fd ≈ [P(y-h)-P(y+h)]/2` (positive dollars/bp for a typical long positive-cash-flow bond).
+First-order hypothetical P&L:
 
-Divide by 2—not by 2h—to get dollars for a 1bp move; dividing by 2h instead approximates `-dP/dy`, in dollars per unit of decimal annual yield. Do not confuse these units.
+```text
+PnL_approx = -(q2/F2)*d2*b2 - (q10/F10)*d10*b10
+```
 
-Verify finite differences across multiple h values to see convergence versus floating-point error. Distinguish market-value DV01 from per-$100-face DV01 by applying the chosen notional scaling.
+Exact (under the two-YTM model) repricing:
 
-## F. Macaulay duration
+```text
+PnL_full =
+    (q2/F2)   * [P2(y2+b2/10000)   - P2(y2)]
+  + (q10/F10) * [P10(y10+b10/10000) - P10(y10)]
+```
 
-For a regular coupon bond with period times `t_k=k/m` years and periodic YTM discounting:
+The cash flows and remaining maturity are held constant across the immediate shock. A DV01-balanced trade has **approximately zero first-order P&L** from equal yield moves, but full repricing can leave a **convexity residual**.
 
-`D_mac = (1/P) * SUM_{k=1}^N t_k * CF_k / (1+y/m)^k`.
+## 6. Hard boundaries
 
-`D_mod = D_mac / (1+y/m)` under the same nominal YTM and coupon frequency.
+This is **not** equivalent to a fully specified coupon-date zero-discount curve or a historical portfolio backtest. Published **Treasury par yields** are not zero-coupon rates, individual-bond YTMs or executable prices. The MVP deliberately omits settlement calendars, accrued interest, financing, coupon cash during a holding period and rebalancing.
 
-## G. Risk beyond a single yield
-
-Historical curve exposures are **not** fully characterized by parallel YTM shifts. Reprice a coupon bond by each dated curve discount factor. Later implement curve bumps, key-rate sensitivities and compare with a one-factor approximation; specify how the bumps interpolate through nearby maturities.
-
-## H. Conventions checklist to fill in before historical backtesting
-
-- Quote unit: yields expressed in decimal internally; display as percent/basis points.
-- Valuation per $100 face vs. per $1m face (never mix silently).
-- Nominal annual semiannual YTM for simple benchmark.
-- Clean versus dirty bond price and accrued interest.
-- Settlement/trade dates, coupon dates, day count and business days.
-- Price source: actual bond prices vs. synthetic curve-based valuation.
-- Discount-curve compounding and interpolation, and how dates map to t.
-- 1bp shock convention; parallel YTM vs. full zero-curve shift.
-
-## I. Numerical engineering rules
-
-Use `double` for calculations and `std::vector` for cash flows. Validate inputs with explicit errors. Avoid using raw owning pointers for simple numerical collections. Use `std::size_t` for container indices and `std::pow` with clear exponents. Compare floating-point outputs with tolerances rather than exact `==`.
+Implementation strategy: use `double`, `std::vector`, explicit input checks, no owning raw pointers, and tolerance-based floating comparisons. See [03_trading_strategy.md](03_trading_strategy.md) and [06_validation_plan.md](06_validation_plan.md).
