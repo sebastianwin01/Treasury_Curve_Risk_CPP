@@ -57,7 +57,37 @@ Treasury_Curve_Risk_CPP/
     └── 12_start_here.md
 ```
 
-**Future code folders** `include/treasury/` and `tests/` will be created **with their first actual headers/tests**, not as empty placeholders. The target five-module design is in [technical architecture](docs/11_technical_architecture.md). The short work order is [Phase 1 — start here](docs/12_start_here.md).
+## Planned C++ implementation map
+
+This is the **target structure as development progresses**, not a list of files already committed:
+
+```text
+Treasury_Curve_Risk_CPP/
+├── include/treasury/
+│   ├── Bond.h                         [Phase 1]
+│   ├── BondPricing.h                  [Phases 1–2]
+│   ├── BondRisk.h                     [Phase 3]
+│   ├── CurveTrade.h                   [Phase 4]
+│   └── ScenarioAnalysis.h             [Phase 5]
+├── src/
+│   ├── Bond.cpp                       [Phase 1]
+│   ├── BondPricing.cpp                [Phases 1–2]
+│   ├── BondRisk.cpp                   [Phase 3]
+│   ├── CurveTrade.cpp                 [Phase 4]
+│   ├── ScenarioAnalysis.cpp           [Phase 5]
+│   └── main.cpp                       [Exists; scaffold]
+├── tests/
+│   ├── test_bond.cpp                  [Phase 1]
+│   ├── test_pricing.cpp               [Phases 1–2]
+│   ├── test_risk.cpp                  [Phase 3]
+│   ├── test_trade.cpp                 [Phase 4]
+│   └── test_scenarios.cpp             [Phase 5]
+└── data/sample/
+    ├── known_price_cases.csv         [Exists]
+    └── illustrative_trade_scenarios.csv [Exists; reference cases]
+```
+
+**Implementation rule:** Create each header, source file, and test **when its phase begins**. The `include/treasury/` and `tests/` directories do not yet exist in the tracked repository. For class members, function signatures, and test requirements, see the [technical architecture](docs/11_technical_architecture.md); begin with [Phase 1 — start here](docs/12_start_here.md).
 
 ## The eight achievable phases
 
