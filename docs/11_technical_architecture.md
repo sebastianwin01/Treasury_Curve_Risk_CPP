@@ -1,567 +1,563 @@
 # Treasury Yield Curve Trading and Risk Analysis in C++
 
-## Complete proposed architecture and file-by-file blueprint
+## 11 — Technical Architecture: Focused C++20 Core
 
-**Status:** architecture proposal, **not an implementation**. Existing files have been checked against the GitHub `main` branch on November 4, 2026. This document does not create or modify any files in GitHub.
+**Document status:** proposed implementation specification, **not completed code**  
+**Revision:** November 4, 2026  
+**Repository:** `sebastianwin01/Treasury_Curve_Risk_CPP`  
+**Research scope:** fixed-coupon Treasury-style bond pricing and interest-rate risk; DV01-balanced 2Y–10Y curve trades; deterministic stress analysis; **conditional synthetic historical research**. **No machine learning, Markov-switching estimation, forecasting, or live trading.**
 
-**Research goal:** price fixed-coupon bonds; solve YTM; compute duration, convexity and DV01; construct DV01-balanced 2Y–10Y steepener/flattener positions; test scenarios; and conditionally evaluate **synthetic historical** P&L. **No ML, Markov switching, stochastic forecasting or live trading.**
+This replaces the earlier, larger architecture proposal with a smaller design that fits the FQE midpoint presentation and the project's approximately **eight-week, 5–7-hours/week** plan. It preserves the previously agreed **eight development phases**, but starts with **seven core headers and seven matching source files** rather than adding a class for every formula or accounting operation.
 
-**Legend:** `[E]` already exists in the repository; `[N]` new file proposed; `[O]` optional/conditional (create only if justified). Directories without files are not tracked by Git; `README.md` placeholders preserve them.
+> **Status legend:** `[E]` = exists in the reviewed GitHub repository; `[N]` = proposed new source or document; `[C]` = conditional file or generated output (do not create until needed). The status of a folder alone does not imply its planned implementation exists. The reviewed `src/main.cpp` is a console placeholder, not a functioning financial engine.
 
-## A. Full target directory tree
+---
+
+## 1. Target directory structure
 
 ```text
 Treasury_Curve_Risk_CPP/
-├── README.md                                      [E] Project overview / eight phases
-├── PROJECT_STATUS.md                              [E] Evidence-based milestones
-├── CMakeLists.txt                                  [E] Extend with library + CTest
-├── .gitignore                                     [E] Generated / private-file exclusions
-├── project_manifest.json                          [E] Project metadata and scope
+│
+├── README.md                                  [E] Project summary, scope, phases
+├── PROJECT_STATUS.md                          [E] Evidence-based milestone tracking
+├── CMakeLists.txt                              [E] C++20 build; extend as modules arrive
+├── .gitignore                                 [E] Ignore build and generated data
+├── project_manifest.json                      [E] Machine-readable project metadata
+│
 ├── docs/
-│   ├── 01_project_charter.md                       [E] Objective, scope, outcomes
-│   ├── 02_math_and_conventions.md                  [E] Equations, units, calendar rules
-│   ├── 03_trading_strategy.md                      [E] 2Y–10Y trade signs/hedging
-│   ├── 04_data_plan.md                             [E] Yield sources, format, checks
-│   ├── 05_backtest_methodology.md                  [E] Synthetic bonds and cash accounting
-│   ├── 06_validation_plan.md                       [E] Benchmarks / tolerances
-│   ├── 07_eight_week_roadmap.md                    [E] Eight-phase plan
-│   ├── 08_reading_map.md                           [E] Relevant textbook sections
-│   ├── 09_decision_log.md                          [E] Confirmed vs proposed decisions
-│   ├── 10_final_report_outline.md                 [E] Report/presentation headings
-│   └── 11_technical_architecture.md               [N] This architecture document
+│   ├── 01_project_charter.md                   [E] Research objective and success criteria
+│   ├── 02_math_and_conventions.md              [E] Pricing and sensitivity formulas
+│   ├── 03_trading_strategy.md                  [E] Steepener/flattener definitions
+│   ├── 04_data_plan.md                         [E] Data sources and rate distinctions
+│   ├── 05_backtest_methodology.md              [E] Synthetic accounting assumptions
+│   ├── 06_validation_plan.md                   [E] Independent acceptance tests
+│   ├── 07_eight_week_roadmap.md                [E] Eight-phase schedule
+│   ├── 08_reading_map.md                       [E] Tuckman/Serrat references
+│   ├── 09_decision_log.md                      [E] Confirmed vs. open conventions
+│   ├── 10_final_report_outline.md             [E] Final research report plan
+│   └── 11_technical_architecture.md           [N] This focused architecture
+│
 ├── include/
-│   ├── README.md                                   [E] Existing placeholder
+│   ├── README.md                               [E] Existing placeholder
 │   └── treasury/
-│       ├── BondTypes.h                             [N] BondSpec, CashFlow
-│       ├── BondCashFlows.h                         [N] Cash-flow generator
-│       ├── BondPricing.h                           [N] YTM and curve pricing
-│       ├── YieldSolver.h                           [N] Bisection YTM solver
-│       ├── BondRisk.h                              [N] Duration, convexity, DV01
-│       ├── YieldCurve.h                            [N] Term structure / discounting
-│       ├── Position.h                              [N] Signed position representation
-│       ├── TradeSizing.h                           [N] 2Y–10Y DV01-neutral hedging
-│       ├── CurveShock.h                            [N] Rate-shock definitions
-│       ├── ScenarioAnalysis.h                      [N] Scenario P&L results
-│       ├── MarketData.h                            [N] Par vs zero curve data types
-│       ├── DatedBond.h                             [O] Dated synthetic bond contracts
-│       ├── Financing.h                             [O] Funding / short-cost parameters
-│       ├── CashLedger.h                            [O] Coupon/trade/collateral cash ledger
-│       ├── Backtester.h                            [O] Historical synthetic simulation
-│       ├── Performance.h                           [O] Drawdown/P&L summary
-│       └── ResultWriter.h                          [O] CSV outputs
+│       ├── Bond.h                              [N] Bond and cash-flow value types
+│       ├── BondPricing.h                       [N] Price and YTM-solver functions
+│       ├── BondRisk.h                          [N] Duration, convexity, DV01
+│       ├── YieldCurve.h                        [N] Zero-curve and discount factors
+│       ├── CurveTrade.h                        [N] Positions and DV01-neutral sizing
+│       ├── ScenarioAnalysis.h                  [N] Curve shocks and scenario P&L
+│       └── MarketData.h                        [N] Data types and CSV loaders
+│
 ├── src/
-│   ├── main.cpp                                    [E] CLI scaffold; wire features later
-│   ├── BondCashFlows.cpp                           [N]
-│   ├── BondPricing.cpp                             [N]
-│   ├── YieldSolver.cpp                             [N]
-│   ├── BondRisk.cpp                                [N]
-│   ├── YieldCurve.cpp                              [N]
-│   ├── TradeSizing.cpp                             [N]
-│   ├── CurveShock.cpp                              [N]
-│   ├── ScenarioAnalysis.cpp                        [N]
-│   ├── MarketData.cpp                              [N]
-│   ├── DatedBond.cpp                               [O]
-│   ├── Financing.cpp                               [O]
-│   ├── CashLedger.cpp                              [O]
-│   ├── Backtester.cpp                              [O]
-│   ├── Performance.cpp                             [O]
-│   └── ResultWriter.cpp                            [O]
+│   ├── main.cpp                                [E] CLI; currently a placeholder
+│   ├── Bond.cpp                               [N] Cash-flow generation and validation
+│   ├── BondPricing.cpp                        [N] PV, YTM bisection, curve pricing
+│   ├── BondRisk.cpp                           [N] Analytical and bumped risk measures
+│   ├── YieldCurve.cpp                         [N] Interpolation and curve shocks
+│   ├── CurveTrade.cpp                         [N] Leg exposure and hedge construction
+│   ├── ScenarioAnalysis.cpp                   [N] Full repricing versus approximations
+│   └── MarketData.cpp                         [N] CSV parsing and source validation
+│
 ├── tests/
-│   ├── README.md                                   [E] Existing placeholder
-│   ├── test_bond_pricing.cpp                       [N] Cash flows, price, par
-│   ├── test_yield_solver.cpp                       [N] YTM convergence and failure cases
-│   ├── test_bond_risk.cpp                          [N] Analytic versus finite difference
-│   ├── test_yield_curve.cpp                        [N] Discounts / interpolation
-│   ├── test_trade_sizing.cpp                       [N] DV01 hedge ratios
-│   ├── test_scenario_analysis.cpp                  [N] Signs / full repricing
-│   ├── test_market_data.cpp                        [N] CSV units, dates, missing values
-│   ├── test_dated_bond.cpp                         [O] Aging / coupon dates
-│   ├── test_cash_ledger.cpp                        [O] Cash flow reconciliation
-│   ├── test_financing.cpp                          [O] Funding and transaction expenses
-│   └── test_backtester.cpp                         [O] Synthetic valuation consistency
+│   ├── README.md                               [E] Existing placeholder
+│   ├── test_bond.cpp                          [N] Cash-flow amount and validation
+│   ├── test_pricing.cpp                       [N] Price, YTM and numerical convergence
+│   ├── test_risk.cpp                          [N] Duration, convexity, DV01
+│   ├── test_curve.cpp                         [N] Discounting and interpolation
+│   ├── test_trades.cpp                        [N] Hedge ratios and scenario P&L
+│   └── test_market_data.cpp                   [C] CSV formats and missing-rate cases
+│
 ├── data/
 │   ├── sample/
-│   │   ├── known_price_cases.csv                   [E] Initial bond-pricing benchmarks
-│   │   ├── sample_zero_curve.csv                   [N] Independent curve benchmark inputs
-│   │   ├── sample_2y10y_shocks.csv                 [N] Parallel/steepener/flattener cases
-│   │   └── synthetic_history_fixture.csv           [O] Small known-result backtest fixture
+│   │   ├── known_price_cases.csv              [E] Independent bond-price benchmarks
+│   │   ├── sample_zero_curve.csv              [N] Tiny hand-checked discount curve
+│   │   └── sample_2y10y_shocks.csv            [N] Illustrative shock cases
 │   ├── raw/
-│   │   └── README.md                               [E] Source and acquisition policy
+│   │   └── README.md                          [E] Source documentation
 │   └── processed/
-│       └── README.md                               [E] Normalized and verified outputs
+│       └── README.md                          [E] Normalization documentation
+│
 ├── python/
-│   ├── README.md                                   [E] Optional non-ML tooling
-│   ├── prepare_treasury_data.py                    [O] Date/unit cleaning for CSV
-│   └── plot_results.py                             [O] Charts from produced results
+│   ├── README.md                               [E] Optional non-ML helpers
+│   ├── prepare_treasury_data.py               [C] Clean/download permitted data
+│   └── plot_results.py                        [C] Figures from C++ result CSVs
+│
 └── results/
-    ├── README.md                                   [E] Generated-file policy
-    ├── scenario_results.csv                        [O] Generated, usually ignored
-    ├── synthetic_backtest.csv                       [O] Generated if feasible
-    └── figures/                                     [O] Generated charts, not source
+    ├── README.md                              [E] Output conventions
+    ├── scenario_results.csv                   [C] Generated deterministic scenarios
+    ├── synthetic_backtest.csv                 [C] Only if viable historical model exists
+    └── figures/                               [C] Generated plots
 ```
 
-## B. Design guidelines
+**Scope control:** No `YieldSolver.h`, `BondCashFlows.h`, `Position.h`, `TradeSizing.h`, `CurveShock.h`, `Performance.h`, or `ResultWriter.h` is required in the **core**. Their small responsibilities live in the seven modules above. If those modules become unwieldy, splitting them later is allowed, but is not a milestone requirement.
 
-1. Use namespace `treasury` and `std::vector`, `std::string`, and value types. Do **not** manually own heap arrays for pricing modules. C++ standard types manage their own memory; no explicit Rule of Five is needed for these records.
-2. **Start with pure functions** and simple `struct` values. Only a component that actually owns state (e.g. `YieldCurve`, `CashLedger`) needs to be a class. Do not build a hierarchy of abstract bonds at Milestone 1.
-3. `BondSpec.faceValueUsd` is a **quotation unit** (e.g. $100); `Position.faceAmountUsd` is the actual modeled investment size. Multiply bond-unit values by `faceAmountUsd / faceValueUsd` to obtain portfolio dollars.
-4. Store yields internally as decimal annual rates (`0.05`, not `5.0`), changes in basis points only when explicitly named `...Bp`, cash in USD and duration in years.
-5. A `YieldCurve` must contain **zero-rate/discount-compatible information**, not unconverted Treasury constant-maturity **par yields**. Market data types should enforce this distinction.
-6. All C++ function declarations belong in `.h`; definitions belong in matching `.cpp` files. Header-only small structs and enums are fine.
-7. Document and test numerical inputs and invalid cases; check compounding bases, strictly increasing curve tenors and well-formed coupon periods.
-8. Any historical P&L without actual security-level executed prices is labeled **synthetic** and is conditional on sound curve inputs and explicit cash/funding conventions.
+---
 
-## C. C++ header-by-header API blueprint
+## 2. General design contracts
 
-The signatures below are **proposed interfaces**, not compiling, implemented source files. Include the relevant standard headers in each header (`<vector>`, `<string>`, `<chrono>`, etc.). Name changes are okay if tracked consistently in documentation, source and tests.
+1. **Namespace:** `treasury`. Include directives in clients use e.g. `#include "treasury/Bond.h"` after `include/` is added to the CMake target's public include path.
+2. **C++ style:** simple value types, `std::vector`, `std::string`, standard algorithms and RAII. Do **not** use owning `new[]`/`delete[]` arrays. Prefer pure numerical functions over mutable state.
+3. **Member conventions:** private class members end in `_`; functions use consistent `camelCase`; `.h` declares interfaces and `.cpp` implements nontrivial methods.
+4. **Rate units:** annual yields and coupon rates are **decimal** (`0.05` = 5%); rate changes explicitly named `...Bp` are **basis points** (`1 bp = 0.0001` in decimal yield).
+5. **Money and duration:** price is USD **per `Bond::faceValueUsd()` quotation unit** (initially $100). Position notionals are actual **face USD**. Multiply a per-unit price or DV01 by `position.faceAmountUsd / bond.faceValueUsd()`; duration is in years, convexity is in years squared, DV01 in USD/bp.
+6. **First bond abstraction:** regular equal coupon periods with `maturityYears * couponsPerYear` a positive integer. This simplified model is **not sufficient** for an actual dated Treasury settlement or coupon/holiday calendar.
+7. **Risk sign:** `dv01UsdPerBp` denotes a **positive sensitivity magnitude** for a conventional long bond with positive cash flows. Price P&L for a long leg is approximately `-DV01 * deltaYieldBp`; a short reverses sign.
+8. **Rate type:** a par constant-maturity rate is **not** a zero rate, cash-flow discount factor, security YTM or trade quote. `YieldCurve` receives validated **zero-rate/discount-compatible** nodes only.
+9. **Historical integrity:** a bond's coupon and final maturity remain fixed after simulated entry; it **ages**. Continuous rolling to new constant-maturity instruments must be modeled as explicit transactions.
+10. **Evidence:** this is an interface plan. Methods, tests, benchmark results and charts are **planned**, not asserted to have run. Update `PROJECT_STATUS.md` only when results can be reproduced.
 
-### C1. `include/treasury/BondTypes.h` — Phase 1
+---
 
-**Purpose:** Fundamental value types shared across pricing modules.
+## 3. Core modules — data members and method signatures
+
+These C++ snippets define the **intended APIs**. They are not yet committed, and each header will need its normal includes/forward declarations and namespace guards (`#pragma once` is fine). Some defaults may be adjusted when coding and independently validating the formulas.
+
+### 3.1 `Bond.h` / `Bond.cpp` — Phase 1
+
+**Responsibility:** represent one simple fixed-rate coupon bond and generate its cash-flow schedule. **Do not** make the bond class responsible for portfolio strategy, current market yields or backtest accounting.
 
 ```cpp
+#pragma once
+#include <vector>
+
 namespace treasury {
-struct BondSpec {
-    double faceValueUsd{100.0};        // Quote unit, not trade notional
-    double annualCouponRate{0.04};     // Decimal annual coupon
-    double maturityYears{2.0};        // Regular whole coupon periods at first
-    int couponsPerYear{2};            // e.g. semiannual = 2
-};
+
 struct CashFlow {
-    double timeYears{};               // Years from valuation to payment
-    double amountUsd{};               // Per BondSpec.faceValueUsd
+    double timeYears{};     // From the valuation time, in years
+    double amountUsd{};     // Per Bond quotation unit (e.g., $100 face)
 };
-}
+
+class Bond {
+private:
+    double faceValueUsd_{};
+    double annualCouponRate_{};  // Decimal: 0.04 = 4%
+    double maturityYears_{};
+    int couponsPerYear_{};
+
+public:
+    Bond(double faceValueUsd, double annualCouponRate,
+         double maturityYears, int couponsPerYear);
+
+    double faceValueUsd() const noexcept;
+    double annualCouponRate() const noexcept;
+    double maturityYears() const noexcept;
+    int couponsPerYear() const noexcept;
+
+    std::vector<CashFlow> regularCashFlows() const;
+};
+
+} // namespace treasury
 ```
 
-**Rules:** validate face > 0, coupon frequency > 0, maturity > 0, finite inputs; first version restricts `maturityYears * couponsPerYear` to an integer number of regular periods. No methods or owned memory needed.
+**Implementation details:** constructor validates positive finite face, nonnegative finite coupon for the baseline, positive finite maturity, and positive integer frequency; first version requires an integer number of regular coupon periods. A payment at period `k` has time `k/m` and coupon amount `F*c/m`, with `F` principal added to the final cash flow.
 
-### C2. `BondCashFlows.h` / `BondCashFlows.cpp` — Phase 1
+**Example:** `Bond(100.0, 0.04, 2.0, 2)` creates payments of `$2, $2, $2, $102` at `0.5, 1.0, 1.5, 2.0` years. This class owns only basic values; **no custom destructor, copy/move constructor or copy/move assignment** is necessary.
 
-```cpp
-std::vector<CashFlow> generateRegularCashFlows(const BondSpec& bond);
-void validateBondSpec(const BondSpec& bond);
-```
+### 3.2 `BondPricing.h` / `BondPricing.cpp` — Phases 1–3
 
-**Algorithm:** period `k=1..N` has `timeYears=k/m`; coupon `F*c/m`; final payment includes `F`. In the first sample this produces `(2, 2, 2, 102)` at `(0.5, 1.0, 1.5, 2.0)` years. No class members.
-
-### C3. `BondPricing.h` / `BondPricing.cpp` — Phases 1 and 3
+**Responsibility:** numerical valuation and a simple bracketed YTM solver. This module has **no persistent data members**.
 
 ```cpp
-double priceFromYTM(const BondSpec& bond, double ytmDecimal);
-double priceCashFlowsFromYTM(const std::vector<CashFlow>& cashFlows,
-                             double ytmDecimal, int couponsPerYear);
-// Add only after YieldCurve is available (Phase 3):
-double priceFromCurve(const BondSpec& bond, const YieldCurve& zeroCurve);
-```
+#pragma once
+#include "treasury/Bond.h"
 
-**Methods:** pure functions; no stateful class. **Formula:** `P = sum CF_k / pow(1+y/m, k)`. For curve pricing, `P = sum CF_k * curve.discountFactor(timeYears)`. Both return USD *per bond quotation unit*. Check that `1+y/m > 0`; historical dated cash flows will need a separate dated schedule.
+namespace treasury {
 
-### C4. `YieldSolver.h` / `YieldSolver.cpp` — Phase 2
+class YieldCurve;  // Defined in YieldCurve.h
 
-```cpp
-struct YieldSolverSettings {
-    double lowerYieldDecimal{-0.10};  // Chosen bracket, not universal
-    double upperYieldDecimal{0.50};   // Chosen bracket, not universal
+struct YtmSolverSettings {
+    double lowerYieldDecimal{-0.02}; // Example bracket; validated for m
+    double upperYieldDecimal{0.50};
     double priceToleranceUsd{1e-10};
-    double yieldTolerance{1e-12};
     int maxIterations{200};
 };
-struct YieldSolveResult {
+
+struct YtmSolveResult {
     double yieldDecimal{};
     double priceResidualUsd{};
     int iterations{};
 };
-YieldSolveResult solveYTM(const BondSpec& bond, double observedPriceUsd,
-                          const YieldSolverSettings& settings);
+
+// Phase 1: present value at a nominal annual yield compounded m times/year
+// Price is USD per bond quotation unit.
+double priceFromYTM(const Bond& bond, double ytmDecimal);
+
+// Phase 2: solve priceFromYTM(bond, y) = marketPriceUsd by bisection.
+YtmSolveResult solveYTM(const Bond& bond, double marketPriceUsd,
+                        const YtmSolverSettings& settings = {});
+
+// Phase 3: discount each coupon/principal CF using its maturity-specific D(t).
+double priceFromCurve(const Bond& bond, const YieldCurve& curve);
+
+} // namespace treasury
 ```
 
-**Algorithm:** bisection of `priceFromYTM(bond,y) - observedPriceUsd`; require positive observed price, valid YTM domain and a sign-changing bracket; return convergence evidence or explicitly throw on failure. These bracket defaults are examples only.
+**Finance equation, Phase 1:**
 
-### C5. `BondRisk.h` / `BondRisk.cpp` — Phase 2
+$$
+P(y)=\sum_{k=1}^{N}\frac{CF_k}{(1+y/m)^k}
+$$
+
+`solveYTM()` checks that the price is positive, the initial bracket is valid and contains a sign change, compounding bases are positive, tolerances are finite and positive, and the solver has converged before returning. The implementation may throw a descriptive `std::invalid_argument` or `std::runtime_error` instead of silently returning a bad yield.
+
+`priceFromCurve()` is declared up front but **implemented only in Phase 3**; it uses `Bond::regularCashFlows()` and `YieldCurve::discountFactor()`. Curve prices here are hypothetical values per bond quotation unit, not executed Treasury quotes.
+
+### 3.3 `BondRisk.h` / `BondRisk.cpp` — Phases 2–4
+
+**Responsibility:** measure interest-rate sensitivities and check them against numerical repricing. No persistent class state.
 
 ```cpp
+#pragma once
+#include "treasury/Bond.h"
+
+namespace treasury {
+class YieldCurve;
+
 struct BondRiskMetrics {
     double macaulayDurationYears{};
     double modifiedDurationYears{};
     double convexityYearsSquared{};
-    double dv01UsdPerBp{};              // Per bond quote unit
+    double dv01UsdPerBp{};  // Magnitude, per Bond quotation unit
 };
-BondRiskMetrics calculateBondRisk(const BondSpec& bond, double ytmDecimal);
-double macaulayDuration(const BondSpec& bond, double ytmDecimal);
-double modifiedDuration(const BondSpec& bond, double ytmDecimal);
-double convexity(const BondSpec& bond, double ytmDecimal);
-double dv01(const BondSpec& bond, double ytmDecimal);
-double dv01FiniteDifference(const BondSpec& bond, double ytmDecimal,
-                            double yieldBumpDecimal = 0.0001);
-double approxPriceChange(const BondSpec& bond, double ytmDecimal,
-                         double deltaYieldDecimal, bool useConvexity);
+
+BondRiskMetrics calculateBondRisk(const Bond& bond, double ytmDecimal);
+
+double dv01FiniteDifference(const Bond& bond, double ytmDecimal,
+                            double bumpBp = 1.0);
+
+double approximatePriceChange(const Bond& bond, double ytmDecimal,
+                              double yieldChangeBp, bool includeConvexity);
+
+// Phase 4: parallel bump every zero rate in the same curve convention.
+double parallelCurveDV01(const Bond& bond, const YieldCurve& curve,
+                         double bumpBp = 1.0);
+
+} // namespace treasury
 ```
 
-**Checks:** positive conventional long-bond DV01, duration consistent with maturity, derivative/finite-difference agreement, plus/minus one-basis-point and larger reprice discrepancies. State which convexity and YTM convention is used.
+**Central definitions:**
 
-### C6. `YieldCurve.h` / `YieldCurve.cpp` — Phase 3
+$$
+D_{mod}=-\frac{1}{P}\frac{dP}{dy},\qquad
+DV01=-\frac{dP}{dy}\times 0.0001,\qquad
+C=\frac{1}{P}\frac{d^2P}{dy^2}
+$$
+
+**Tests:** analytic duration and convexity versus central differences; DV01 per `$100` face versus scaled `$1m` positions; plus/minus 1-bp and larger shocks. A `parallelCurveDV01` uses **curve** price shocks; it should not silently mix YTM-bump DV01 with curve-bump DV01.
+
+### 3.4 `YieldCurve.h` / `YieldCurve.cpp` — Phase 3
+
+**Responsibility:** hold the *cross-sectional zero-rate curve* used to discount coupon cash flows. The first version is not a dynamic Nelson–Siegel, Markov or predictive model.
 
 ```cpp
+#pragma once
+#include <vector>
+
+namespace treasury {
+
 struct ZeroCurveNode {
     double maturityYears{};
-    double zeroRateDecimal{};       // Annual rate, convention stated below
+    double zeroRateDecimal{};
 };
+
 enum class ZeroCompounding { Continuous, Semiannual };
 enum class CurveInterpolation { LinearZeroRate, LinearLogDiscount };
+
 class YieldCurve {
 private:
-    std::vector<ZeroCurveNode> nodes_;
+    std::vector<ZeroCurveNode> nodes_;   // Strictly increasing maturities
     ZeroCompounding compounding_;
     CurveInterpolation interpolation_;
+
 public:
     YieldCurve(std::vector<ZeroCurveNode> nodes,
                ZeroCompounding compounding,
                CurveInterpolation interpolation);
+
     double zeroRate(double maturityYears) const;
     double discountFactor(double maturityYears) const;
+    YieldCurve shiftedParallelBp(double shiftBp) const;
+    YieldCurve shiftedTwoTenBp(double twoYearShiftBp,
+                               double tenYearShiftBp) const;
     const std::vector<ZeroCurveNode>& nodes() const noexcept;
 };
+
+} // namespace treasury
 ```
 
-**Invariant:** sorted unique positive tenors, finite rates, consistent compounding; explicit behavior at `t=0` (`D(0)=1`) and outside observed range (error or documented extrapolation). **A par-yield data series must not be used to construct this class directly.**
+**Finance equation, Phase 3:**
 
-### C7. `Position.h` — Phase 4
+$$
+P_{curve}=\sum_{k=1}^{N}CF_k D(t_k)
+$$
+
+For **continuous** compounding only, `D(t) = exp(-z(t)*t)`. For semiannual zero rates, apply that explicit compounding convention instead; never mix them. Interpolation should be specified and tested; values outside provided maturities must have a deliberate boundary policy, not silent extrapolation.
+
+**Shock convention (proposed, not locked):** `shiftedTwoTenBp()` applies the specified 2Y and 10Y shifts at those nodes, interpolates **shifts** linearly between 2 and 10 years and applies the nearer anchor shift outside that range. Confirm this convention in `docs/09_decision_log.md` before using it for conclusions.
+
+### 3.5 `CurveTrade.h` / `CurveTrade.cpp` — Phase 4
+
+**Responsibility:** represent the two positions, calculate notional scaling and construct DV01-balanced steepeners/flatteners. This **combines** the earlier proposed `Position.h` and `TradeSizing.h` responsibilities.
 
 ```cpp
-enum class PositionSide { Long = 1, Short = -1 };
-struct Position {
-    BondSpec bond{};
-    double faceAmountUsd{};         // Total notional; >=0
-    PositionSide side{PositionSide::Long};
+#pragma once
+#include "treasury/Bond.h"
+
+namespace treasury {
+class YieldCurve;
+
+enum class PositionSide { Long, Short };
+
+struct TradeLeg {
+    Bond bond;
+    PositionSide side;
+    double faceAmountUsd;  // Actual face notional, >= 0
 };
+
+class CurveTrade {
+private:
+    TradeLeg twoYear_;
+    TradeLeg tenYear_;
+
+public:
+    CurveTrade(TradeLeg twoYear, TradeLeg tenYear);
+
+    const TradeLeg& twoYear() const noexcept;
+    const TradeLeg& tenYear() const noexcept;
+
+    // Use the same curve-DV01 definition for both sides.
+    static CurveTrade makeDv01NeutralSteepener(
+        const Bond& twoYearBond, const Bond& tenYearBond,
+        const YieldCurve& curve, double twoYearFaceAmountUsd);
+
+    static CurveTrade makeDv01NeutralFlattener(
+        const Bond& twoYearBond, const Bond& tenYearBond,
+        const YieldCurve& curve, double twoYearFaceAmountUsd);
+
+    double netParallelDV01(const YieldCurve& curve) const;
+};
+
+} // namespace treasury
 ```
 
-**Behavior:** signed modeled bond value = side × `(faceAmountUsd / bond.faceValueUsd)` × quote-unit price. Keep the sign separate from nonnegative notional.
+**Position scaling:** Let each per-quote-unit DV01 be positive for a conventional long bond; then the DV01 per **one face dollar** is `dv01Unit / bond.faceValueUsd()`.
 
-### C8. `TradeSizing.h` / `TradeSizing.cpp` — Phase 4
+For a chosen 2Y **face notional** `q2`, the 10Y notional that matches magnitudes is:
 
-```cpp
-struct CurveTrade {
-    Position twoYear;
-    Position tenYear;
-};
-struct TradeExposure {
-    double dv01TwoYearUsdPerBp{};   // Signed dollar exposure
-    double dv01TenYearUsdPerBp{};
-    double netParallelDv01UsdPerBp{};
-};
-double hedgeFaceAmountUsd(double anchorFaceAmountUsd,
-                          double anchorDv01PerQuoteUnit, double anchorQuoteFaceUsd,
-                          double hedgeDv01PerQuoteUnit, double hedgeQuoteFaceUsd);
-CurveTrade makeDv01BalancedSteepener(const BondSpec& twoYear,
-                                     const BondSpec& tenYear,
-                                     double twoYearYTM, double tenYearYTM,
-                                     double chosenTwoYearFaceUsd);
-CurveTrade makeDv01BalancedFlattener(const BondSpec& twoYear,
-                                     const BondSpec& tenYear,
-                                     double twoYearYTM, double tenYearYTM,
-                                     double chosenTwoYearFaceUsd);
-TradeExposure calculateTradeExposure(const CurveTrade& trade,
-                                     double twoYearYTM, double tenYearYTM);
-```
+$$
+q_{10}=q_2\frac{DV01_2/F_2}{DV01_{10}/F_{10}}
+$$
 
-**Note:** hedge sizing must normalize by each bond's quote face amount; the illustrative $4m/$1m ratio only applies to the stated illustrative DV01s. Use bond-specific model DV01s for actual model sizing.
+where `F2` and `F10` are each instrument's face quotation units. To compute net parallel DV01, **long = +DV01** and **short = −DV01**. For a yield increase, first-order P&L is `− net_signed_DV01 × change_in_bp`.
 
-### C9. `CurveShock.h` / `CurveShock.cpp` — Phase 5
+**Illustrative midpoint example, not live data:** 2Y `$190/bp per $1m` and 10Y `$760/bp per $1m` gives **long $4m 2Y / short $1m 10Y**. Each leg has `$760/bp` of absolute risk. These particular figures are benchmark *inputs*, not outputs of actual market pricing.
+
+### 3.6 `ScenarioAnalysis.h` / `ScenarioAnalysis.cpp` — Phase 5
+
+**Responsibility:** apply chosen interest-rate shocks to the full portfolio and compare DV01 approximations against revaluation. This **combines** the earlier `CurveShock.h` and `ScenarioAnalysis.h` concepts.
 
 ```cpp
-struct ShockNode {
-    double maturityYears{};
-    double shiftBp{};
-};
-struct CurveShock {
+#pragma once
+#include <string>
+#include "treasury/CurveTrade.h"
+
+namespace treasury {
+class YieldCurve;
+
+struct CurveScenario {
     std::string name;
-    std::vector<ShockNode> shiftsBp;
+    double twoYearShiftBp{};
+    double tenYearShiftBp{};
 };
-YieldCurve applyCurveShock(const YieldCurve& baseCurve,
-                           const CurveShock& shock);
-```
 
-**Behavior:** interpolate shock shifts with an explicit maturity/boundary rule; apply **rate shifts** consistently with the underlying zero curve, not blindly as separate coupon-bond YTM changes. Simple example scenarios: `+10/+10 bp` parallel, `+5/+15 bp` steepening, `+15/+5 bp` flattening at 2Y/10Y.
-
-### C10. `ScenarioAnalysis.h` / `ScenarioAnalysis.cpp` — Phase 5
-
-```cpp
 struct ScenarioResult {
     std::string name;
     double firstOrderPnlUsd{};
-    double durationConvexityPnlUsd{};
-    double fullRepricePnlUsd{};
+    double fullRepricingPnlUsd{};
     double approximationErrorUsd{};
+    double netParallelDv01UsdPerBp{};
 };
+
 ScenarioResult evaluateScenario(const CurveTrade& trade,
                                 const YieldCurve& baseCurve,
-                                const CurveShock& shock);
+                                const CurveScenario& scenario);
+
+} // namespace treasury
 ```
 
-**Behavior:** model starting/ending curve prices for each leg; compare DV01/convexity approximations and full repricing, with explicit signs and common quote units. Phase 5 can use a simplified two-YTM scenario first; a full curve-shock test is the stronger final implementation.
+**Algorithm:** price each leg at the original curve; construct a shocked curve using the **documented shift interpolation**; reprice each leg; multiply price changes by signed face-amount ratios; compare exact model P&L with first-order DV01 P&L under an explicitly consistent shock basis. The `approximationErrorUsd` convention must be stated (recommended: `fullRepricingPnlUsd − firstOrderPnlUsd`).
 
-### C11. `MarketData.h` / `MarketData.cpp` — Phase 6 (feasibility check in Phase 3)
+**Required sample scenarios:** parallel `(+10,+10) bp`, steepening `(+5,+15) bp`, flattening `(+15,+5) bp`, plus larger moves. For the **midpoint's assumed $760/bp per-leg exposure**, first-order P&L is `$0`, `+$7,600`, and `−$7,600`, respectively. Because a real coupon bond has curve and convexity exposures, a full curve-repricing result **need not** exactly reproduce the simplistic two-yield formula.
+
+### 3.7 `MarketData.h` / `MarketData.cpp` — Phase 6
+
+**Responsibility:** load and validate dated observations. Do not use CSV import as a hidden rate conversion or assume a par-yield series is a zero-rate curve.
 
 ```cpp
-using Date = std::chrono::sys_days;
+#pragma once
+#include <string>
+#include <vector>
+#include "treasury/YieldCurve.h"
+
+namespace treasury {
+
 struct ParYieldObservation {
-    Date date{};
-    double twoYearParYieldDecimal{};
-    double tenYearParYieldDecimal{};
+    std::string dateIso;     // YYYY-MM-DD
+    double twoYearRateDecimal{};
+    double tenYearRateDecimal{};
 };
-struct ZeroCurveSnapshot {
-    Date date{};
+
+struct ZeroCurveObservation {
+    std::string dateIso;
     std::vector<ZeroCurveNode> nodes;
 };
-std::vector<ParYieldObservation> loadParYieldsCsv(const std::string& path);
-std::vector<ZeroCurveSnapshot> loadZeroCurvesCsv(const std::string& path);
+
+std::vector<ParYieldObservation> loadParYieldCsv(const std::string& path);
+std::vector<ZeroCurveObservation> loadZeroCurveCsv(const std::string& path);
+
+} // namespace treasury
 ```
 
-**Checks:** unique dates/tenors, chronological ordering, missing values, correct percentage-to-decimal conversion, provenance metadata, consistent rate types. A par observation must never be passed as a zero curve without an explicit verified conversion/bootstrapping method.
+**Checks:** enforce a documented CSV schema, parse valid ISO dates, normalize explicit source units once, reject duplicate dates/tenors unless a recorded rule resolves them, report missing 2Y/10Y pairs and disallow negative or invalid maturity nodes. For curve-based valuation, preserve the **source's actual zero-rate compounding** and create an explicitly configured `YieldCurve`; if the data are par yields only, produce **descriptive slope statistics**, not a fabricated curve backtest.
 
-### C12. `DatedBond.h` / `DatedBond.cpp` — Conditional Phase 7
+---
 
-```cpp
-struct DatedBond {
-    std::string instrumentId;
-    double faceValueUsd{100.0};
-    double annualCouponRate{};
-    std::vector<Date> couponDates; // Explicit; increasing and unambiguous
-    Date maturityDate{};
-};
-struct DatedCashFlow {
-    Date paymentDate{};
-    double amountUsd{};
-};
-std::vector<DatedCashFlow> remainingCashFlows(const DatedBond& bond, Date asOf);
-std::vector<DatedCashFlow> paymentsBetween(const DatedBond& bond,
-                                            Date fromExclusive, Date toInclusive);
-double dirtyPriceFromCurve(const DatedBond& bond, Date asOf,
-                           const YieldCurve& valuationCurve);
-```
+## 4. Responsibility map — seven core files
 
-**Why separate:** the early `BondSpec` assumes regular equal periods; historically aging bonds have real payment dates. Define year fractions, settlement and cash treatment **before** applying dated pricing. Never reset coupon or maturity of an existing held bond when time advances.
+| Interface + implementation | Main owned data | Main operations | Phase |
+|---|---|---|---|
+| `Bond.h` + `Bond.cpp` | face, coupon, maturity, frequency; computed cash flows | construct, validate, accessors, `regularCashFlows()` | 1 |
+| `BondPricing.h` + `BondPricing.cpp` | solver settings/result values; no stateful pricer | `priceFromYTM()`, `solveYTM()`, `priceFromCurve()` | 1–3 |
+| `BondRisk.h` + `BondRisk.cpp` | risk result record; no stateful calculator | `calculateBondRisk()`, `dv01FiniteDifference()`, `parallelCurveDV01()` | 2–4 |
+| `YieldCurve.h` + `YieldCurve.cpp` | zero nodes, compounding, interpolation | `zeroRate()`, `discountFactor()`, `shiftedParallelBp()`, `shiftedTwoTenBp()` | 3 |
+| `CurveTrade.h` + `CurveTrade.cpp` | 2Y/10Y legs with side and face notional | build DV01-neutral positions, `netParallelDV01()` | 4 |
+| `ScenarioAnalysis.h` + `ScenarioAnalysis.cpp` | shock/result value types; no mutable engine | `evaluateScenario()` and full repricing | 5 |
+| `MarketData.h` + `MarketData.cpp` | dated par/zero observations | CSV loading, date/tenor/rate checks | 6 |
 
-### C13. `Financing.h` / `Financing.cpp` — Conditional Phase 7
+`src/main.cpp` is an **entry point**, not an eighth analytics module: it should parse or demonstrate small experiments, call the core modules, and print or export results. Keep business and numerical logic out of `main.cpp`.
 
-```cpp
-struct FinancingAssumptions {
-    double annualLongFundingRate{};
-    double annualShortBorrowRate{};
-    double annualShortProceedsRebateRate{};
-    double executionCostBp{};
-    double longHaircutFraction{};
-};
-double accrueFundingCost(double fundedUsd, double annualRate,
-                         double yearFraction);
-double executionCostUsd(double tradedMarketValueUsd, double costBp);
-```
+---
 
-**Rules:** never assume free short-sale proceeds, no short rebate or zero costs without labeling assumptions. Costs are model parameters for sensitivity analysis—not observed trades. Some rates may be signed; document conventions.
+## 5. Testing map and numerical acceptance criteria
 
-### C14. `CashLedger.h` / `CashLedger.cpp` — Conditional Phase 7
-
-```cpp
-enum class LedgerKind { Purchase, Sale, Coupon, Principal,
-                        Funding, ShortBorrow, Rebate, TransactionCost };
-struct LedgerEntry {
-    Date date{};
-    LedgerKind kind{};
-    double amountUsd{};           // Signed cash change
-    std::string description;
-};
-class CashLedger {
-private:
-    std::vector<LedgerEntry> entries_;
-    double cashBalanceUsd_{0.0};
-public:
-    void post(const LedgerEntry& entry);
-    double cashBalanceUsd() const noexcept;
-    const std::vector<LedgerEntry>& entries() const noexcept;
-};
-```
-
-**Checks:** coupon paid to long/owed on short, bond principal at redemption, costs and balances; reconcile portfolio changes with cash ledger. Realistic collateral accounts may require additional state; don't silently treat collateral as spendable cash.
-
-### C15. `Backtester.h` / `Backtester.cpp` — Conditional Phase 7
-
-```cpp
-struct BacktestConfig {
-    Date startDate{};
-    Date endDate{};
-    int holdDays{};                  // Proposed; decision not yet locked
-    double initialTwoYearFaceUsd{};
-    FinancingAssumptions financing{};
-};
-struct BacktestRow {
-    Date date{};
-    double portfolioValueUsd{};
-    double cashBalanceUsd{};
-    double netDv01UsdPerBp{};
-    double grossPnlUsd{};
-    double netPnlUsd{};
-};
-struct BacktestResult {
-    std::vector<BacktestRow> rows;
-    std::string assumptionSummary;
-};
-BacktestResult runSyntheticBacktest(
-    const std::vector<ZeroCurveSnapshot>& datedCurves,
-    const BacktestConfig& config);
-```
-
-**Behavior:** initialize **fixed coupon** synthetic bonds, hold/age them, accrue time and coupons, reprice at successive dates, post funding and transaction costs, optionally rebalance under a prespecified rule, and export a reconciled cash/P&L ledger. Only implement when data and conventions are sufficiently reliable.
-
-### C16. `Performance.h` / `Performance.cpp` — Conditional Phase 7
-
-```cpp
-struct PerformanceSummary {
-    double cumulativeGrossPnlUsd{};
-    double cumulativeNetPnlUsd{};
-    double maxDrawdownUsd{};
-};
-PerformanceSummary summarizePerformance(const BacktestResult& result);
-```
-
-**Rules:** report dollar P&L first; percent returns, Sharpe and capital-based drawdown require clearly defined invested capital/financing and sampling assumptions.
-
-### C17. `ResultWriter.h` / `ResultWriter.cpp` — Phase 8, conditional on output
-
-```cpp
-void writeScenarioResultsCsv(const std::string& path,
-                             const std::vector<ScenarioResult>& results);
-void writeBacktestResultsCsv(const std::string& path,
-                             const BacktestResult& results);
-```
-
-**Behavior:** stable, documented column names and financial units, reproducible outputs, no embedded magic data.
-
-### `src/main.cpp` — all stages
-
-**Should include:** parse a few CLI arguments or call a controlled demonstration; use library functions to run benchmark pricing and scenarios. **Should not include:** pricing formulas, numerical solvers, CSV parsing or backtest algorithms. As of the reviewed GitHub `main`, `main.cpp` only prints the starter banner.
-
-## D. Matching `.cpp` implementation responsibilities
-
-Every non-header-only component has a matching `.cpp`. This is the submap of source implementations, not additional classes:
-
-| Implementation | Contains | Phase |
+| Test file | Introduced | Tests to write |
 |---|---|---|
-| `BondCashFlows.cpp` | Input validation; regular coupon generation; final principal | 1 |
-| `BondPricing.cpp` | Discounting loops; YTM and eventually curve valuation | 1, 3 |
-| `YieldSolver.cpp` | Bisection loop, bracket validation, residual/iteration stopping | 2 |
-| `BondRisk.cpp` | Duration, convexity, DV01 and price-shock approximation | 2 |
-| `YieldCurve.cpp` | Node validation, interpolation, zero-to-discount conversion | 3 |
-| `TradeSizing.cpp` | Dollar-DV01 scaling, two-leg hedge ratio, exposure summaries | 4 |
-| `CurveShock.cpp` | Define and apply maturity-dependent rate shocks | 5 |
-| `ScenarioAnalysis.cpp` | Baseline/repriced position values and error attribution | 5 |
-| `MarketData.cpp` | CSV parsing, date normalization, data-quality checks | 6 |
-| `DatedBond.cpp` | Historical coupon schedule/aging and dirty-price valuation | 7, conditional |
-| `Financing.cpp` | Cost accrual and execution assumptions | 7, conditional |
-| `CashLedger.cpp` | Record signed cash transactions, balance and reconciliation | 7, conditional |
-| `Backtester.cpp` | Daily synthetic positions and backtest lifecycle | 7, conditional |
-| `Performance.cpp` | Meaningful P&L aggregates and drawdown | 7, conditional |
-| `ResultWriter.cpp` | Write clearly labeled reproducible CSV results | 8, conditional |
+| `tests/test_bond.cpp` | Phase 1 | `Bond(100,0.04,2,2)` has cash flows `(2,2,2,102)`; times `(0.5,1,1.5,2)`; invalid zero face/frequency rejected |
+| `tests/test_pricing.cpp` | Phase 1; extended Phase 2 | Price at 5% YTM ≈ **$98.1190129**; price at 4% YTM = `$100`; zero-coupon price; higher yield implies lower price; bisection recovers known YTM; invalid brackets rejected |
+| `tests/test_risk.cpp` | Phase 2 | Positive conventional DV01; analytic versus finite-difference risk; units per `$100` and `$1m` face; duration/convexity approximation error under small and large moves |
+| `tests/test_curve.cpp` | Phase 3 | Known discount factors; compounding and interpolation cases; `priceFromCurve()` against manual sum; parallel-bump sensitivity; boundary handling |
+| `tests/test_trades.cpp` | Phases 4–5 | Hedge sizing and signs; illustrative `$4m` 2Y / `$1m` 10Y example; midpoint first-order scenario P&L; full-repricing consistency; nonzero residual risk |
+| `tests/test_market_data.cpp` | Phase 6, only when parser exists | Bad dates, gaps, missing tenors, rate-unit normalization, sorted/duplicate handling; par-vs-zero separation |
 
-## E. Automated test file map
+**Sample data to retain:** `data/sample/known_price_cases.csv` already contains the `$98.1190129` benchmark and other known cases. New `sample_zero_curve.csv` and `sample_2y10y_shocks.csv` should be tiny, fully documented, and suitable for independent hand checks.
 
-| Test file | Required checks |
-|---|---|
-| `test_bond_pricing.cpp` | Four cash flows `(2,2,2,102)`; 5% YTM ~$98.1190129; 4% YTM $100; zero coupon; yield monotonicity; invalid inputs |
-| `test_yield_solver.cpp` | Recover 5% from $98.1190129 and 4% from $100; bracket failures; iteration and residual tolerances |
-| `test_bond_risk.cpp` | Analytic versus central-difference duration/DV01/convexity; ±1bp and ±100bp; sign and unit checks |
-| `test_yield_curve.cpp` | Known discount factors; known PV; compounding choice; interpolation; duplicate tenors; missing bounds |
-| `test_trade_sizing.cpp` | Correct long/short signs and common-face scaling; matched DV01; zero/invalid input checks |
-| `test_scenario_analysis.cpp` | Parallel +10/+10 bp ≈ zero first-order P&L; steepening +5/+15 bp positive for steepener; flattening sign reversed; full repricing residual |
-| `test_market_data.cpp` | Percent→decimal; date sorting; duplicates; missing 2Y/10Y pairs; par/zero type distinction |
-| `test_dated_bond.cpp` | Coupon due dates, aging, final principal, coupon amount unchanged after entry |
-| `test_financing.cpp` | Rate/elapsed-time conventions; long funding, short costs, transaction fees |
-| `test_cash_ledger.cpp` | Signed coupons/cash, short coupon payments, traded notionals, ledger reconciliation |
-| `test_backtester.cpp` | A small hand-computed synthetic history, no-lookahead, rebalancing entries, gross/net P&L, missing date behavior |
+**Important:** The midpoint's `$0`, `+$7,600`, `−$7,600` table is a **first-order DV01 arithmetic check** using assumed sensitivities, not the expected exact repricing output for every coupon-bond/curve combination.
 
-Use **CTest** and simple `assert`/custom checks to start. Add an external testing framework only if it genuinely helps. A failing test must return a nonzero process exit status.
+### Suggested incremental CMake/CTest organization
 
-## F. All existing documentation and repository-root files
+**Do not replace the existing working CMake executable until the source files exist.** After Phase 1, refactor toward this structure (illustrative, not currently buildable):
 
-| File | What it should include / maintain |
-|---|---|
-| `README.md` | Research question, non-ML scope, eight phases, install/build commands, actual vs proposed status, synthetic-only limitations, links |
-| `PROJECT_STATUS.md` | Per-phase status, evidence links/commit IDs, benchmark acceptance and current next task; no speculative completion claims |
-| `CMakeLists.txt` | C++20 standard, warning flags, static/core library sources, `treasury_curve_cli`, testing with CTest, optional output paths |
-| `.gitignore` | IDE/build artifacts and cache files; raw/processed data or generated results as appropriate; no API keys or private credentials |
-| `project_manifest.json` | Machine-readable title, research question, scope, expected modules and honest current stage |
-| `docs/01_project_charter.md` | Scope, collaborators/roles once agreed, goals, constraints, and definition of done |
-| `docs/02_math_and_conventions.md` | Pricing and YTM equations; discount-factor conventions; risk derivatives; currency/time/rate units; later actual-date conventions |
-| `docs/03_trading_strategy.md` | Definition of steepening/flattening; DV01-neutral ratio; scenario examples; caveats |
-| `docs/04_data_plan.md` | Source provenance, historical observations, par-vs-zero distinction, schema, missing-data and date rules |
-| `docs/05_backtest_methodology.md` | Synthetic contracts, fixed coupons, aging, clean/dirty and coupon ledger, funding/collateral/transaction costs, backtest biases and go/no-go |
-| `docs/06_validation_plan.md` | Exact numerical acceptance tests, independent benchmarks, tolerances, edge cases and cash-ledger reconciliation |
-| `docs/07_eight_week_roadmap.md` | Tasks, week-by-week phases, review gates, and deliverable dependencies |
-| `docs/08_reading_map.md` | Tuckman chapters 1–6 mapped to the implementation milestones |
-| `docs/09_decision_log.md` | Confirmed vs proposed conventions; open decisions and reasons for each change |
-| `docs/10_final_report_outline.md` | Abstract, theory, methodology, implementation, tested results, limitations and conclusions |
-| `docs/11_technical_architecture.md` | **New:** target file structure, types, interfaces, dependencies and test mapping (this document) |
-| `include/README.md` | Placeholder and notes explaining public API and namespace; it may be removed when `.h` files exist |
-| `tests/README.md` | How to run tests and interpret failures; file-to-milestone coverage |
-| `python/README.md` | Scope of non-ML helper scripts, requirements and usage |
-| `data/raw/README.md` | Raw data source, license/provenance, ignored files and acquisition instructions |
-| `data/processed/README.md` | Normalized schema, transforms, missing-value policy, regeneration steps |
-| `results/README.md` | Output schema, regeneration command, synthetic disclaimer; generated files are normally ignored |
+```cmake
+cmake_minimum_required(VERSION 3.16)
+project(TreasuryCurveRisk LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-## G. Data file map
+add_library(treasury_core
+    src/Bond.cpp
+    src/BondPricing.cpp
+    # Append implemented .cpp files in later phases.
+)
+target_include_directories(treasury_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-| File | Suggested columns | Key checks |
-|---|---|---|
-| `data/sample/known_price_cases.csv` `[E]` | case_id, face_value_usd, annual_coupon_rate_decimal, maturity_years, payments_per_year, ytm_nominal_annual_decimal, expected_price_usd, description | Keep independent $98.119/$100/zero cases; do not alter benchmarks to fit buggy code |
-| `data/sample/sample_zero_curve.csv` `[N]` | maturity_years, zero_rate_decimal, compounding | Clearly declared compounding, nonduplicate tenors |
-| `data/sample/sample_2y10y_shocks.csv` `[N]` | scenario, shift_2y_bp, shift_10y_bp, expected_first_order_pnl_usd | Include parallel and two opposing slope shocks |
-| `data/sample/synthetic_history_fixture.csv` `[O]` | valuation_date, maturity_years, zero_rate_decimal, plus documented fixture metadata | Manually reconcile tiny history before broad data |
-| `data/raw/*` | Original source files, ignored unless permitted | Never overwrite originals silently |
-| `data/processed/*` | Standardized date, rate_type, maturity_years, annual_rate_decimal, compounding, quality_flag | Reject missing/duplicate records; keep provenance |
-| `results/scenario_results.csv` `[O]` | scenario, approx_pnl_usd, full_reprice_pnl_usd, error_usd | Clear scenario/synthetic labels |
-| `results/synthetic_backtest.csv` `[O]` | date, both leg notionals, signed DV01, cash, coupon, financing, gross/net P&L | Reconcile inventory and cash; labeled synthetic |
+add_executable(treasury_curve_cli src/main.cpp)
+target_link_libraries(treasury_curve_cli PRIVATE treasury_core)
 
-## H. CMake and dependency map
+enable_testing()
+add_executable(test_bond tests/test_bond.cpp)
+target_link_libraries(test_bond PRIVATE treasury_core)
+add_test(NAME BondTest COMMAND test_bond)
+
+# Register other test files as they are implemented.
+```
+
+Use CTest and a small test helper or assertions to start; no external test framework is required for the first milestone. Keep appropriate compiler warnings (`-Wall -Wextra -Wpedantic` on GCC/Clang or `/W4` on MSVC) when refactoring.
+
+---
+
+## 6. Phases 7–8 — keep historical simulation conditional
+
+The FQE presentation asks for hypothetical historical positions, P&L and risk, but does **not** require a general-purpose trading engine. Keep advanced simulation files **out of the mandatory core** until a data/valuation feasibility check passes.
+
+### Phase 7: two responsible delivery paths
+
+**Path A — valid dated zero/discount curves available:** implement a **small synthetic historical experiment**. At entry define fixed-coupon bonds with actual dated payment schedules, initial price, two notionals and a DV01 hedge. As time advances, age the same bonds, handle coupons, mark remaining cash flows using each dated curve, apply explicitly assumed costs/funding, and reconcile cash and P&L. A simple prototype can initially live in a well-tested research driver; split files only when complexity warrants it.
+
+**Conditional extracted modules (only if necessary):**
 
 ```text
-main.cpp
-  └── treasury_core (CMake library)
-        ├── BondTypes.h
-        ├── BondCashFlows.cpp
-        ├── BondPricing.cpp
-        ├── YieldSolver.cpp        --> priceFromYTM
-        ├── BondRisk.cpp           --> priceFromYTM + bond cash flows
-        ├── YieldCurve.cpp         --> nodes / interpolation
-        ├── TradeSizing.cpp        --> BondRisk + Position
-        ├── CurveShock.cpp         --> YieldCurve
-        ├── ScenarioAnalysis.cpp   --> TradeSizing + CurveShock + BondPricing
-        ├── MarketData.cpp         --> CSV + rate type definitions
-        └── Optional dated simulator
-             ├── DatedBond.cpp
-             ├── Financing.cpp
-             ├── CashLedger.cpp
-             ├── Backtester.cpp
-             ├── Performance.cpp
-             └── ResultWriter.cpp
-
-tests/test_*.cpp -> treasury_core -> CTest
-python/*.py      -> input cleaning / result plots only
+include/treasury/DatedBond.h        [C] Dated coupons, maturity and remaining cash flows
+include/treasury/Backtester.h       [C] Historical simulation controller and daily rows
+include/treasury/CashLedger.h      [C] Signed coupon, funding, trading cash entries
+src/DatedBond.cpp                  [C]
+src/Backtester.cpp                 [C]
+src/CashLedger.cpp                 [C]
+tests/test_backtester.cpp          [C]
 ```
 
-CMake **target intent** after implementation: `add_library(treasury_core ...)`, `target_include_directories(treasury_core PUBLIC include)`, `target_link_libraries(treasury_curve_cli PRIVATE treasury_core)`, `include(CTest)`, `add_executable(test_bond_pricing ...)`, `add_test(...)`. Add source files **as they are written**, not all at once before the files exist.
+Possible data fields for a conditional `BacktestConfig` include `startDate`, `endDate`, `holdingDays`, `rebalancingRule`, `twoYearFaceAmountUsd`, `annualFundingRate`, `annualShortBorrowRate`, and `executionCostBp`. A conditional `BacktestRow` should capture `dateIso`, both positions, gross/net P&L, coupons, financing and transaction costs, and exposure. These names are **design notes**, not approved historical assumptions or core APIs.
 
-## I. Build order (most important practical guidance)
+**Path B — insufficient curve or accounting data:** deliver validated **deterministic** scenario analysis and descriptive 2Y/10Y yield-spread history. Do not report results as executable trades, strategy alpha or historical portfolio returns.
 
-| Phase | Create these files **when you reach it** | Do not do yet |
+### Phase 8: results and report
+
+- Rebuild from a clean checkout and rerun the documented tests.
+- Output scenario tables and any defensible synthetic historical results. Optional `python/plot_results.py` can turn CSVs into figures.
+- Compare first-order DV01 P&L to full repricing and describe approximation errors.
+- State curve source and conventions, limitations, assumed financing and the difference between hypothetical valuations and tradeable prices.
+- Ensure `README.md`, `PROJECT_STATUS.md` and the presentation reflect **actually completed** results.
+
+---
+
+## 7. Eight-phase dependency and delivery map
+
+| Phase | Main files first created/extended | Exit gate |
 |---|---|---|
-| 1 | `BondTypes.h`, `BondCashFlows.h/.cpp`, `BondPricing.h/.cpp`, `test_bond_pricing.cpp` | Yield curve/backtest classes |
-| 2 | `YieldSolver.h/.cpp`, `BondRisk.h/.cpp`, corresponding tests | Historical finance mechanisms |
-| 3 | `YieldCurve.h/.cpp`, `test_yield_curve.cpp`; investigate zero-curve data now | Assuming par yields are zeros |
-| 4 | `Position.h`, `TradeSizing.h/.cpp`, `test_trade_sizing.cpp` | Predictive strategies |
-| 5 | `CurveShock.h/.cpp`, `ScenarioAnalysis.h/.cpp`, scenario tests | Realized-return claims |
-| 6 | `MarketData.h/.cpp`, `test_market_data.cpp`, optional CSV cleaning Python | Unverifiable historical valuation |
-| 7 | **Only if defensible:** `DatedBond`, `Financing`, `CashLedger`, `Backtester`, `Performance` modules and tests | Pretend executable fills or live orders |
-| 8 | `ResultWriter` if needed, plots, final report, full CTest run and README updates | New unvalidated features |
+| **1. Bond pricing fundamentals** | `Bond`, `BondPricing`, `test_bond`, `test_pricing` | Cash flows and benchmark prices independently checked |
+| **2. Yield solving and sensitivities** | Extend `BondPricing`; add `BondRisk`, `test_risk` | YTM, duration, convexity and DV01 checks pass |
+| **3. Treasury yield curves** | `YieldCurve`; extend `BondPricing`, `test_curve` | Term-dependent cash-flow discounts verified; start data-feasibility review |
+| **4. 2Y–10Y portfolio construction** | `CurveTrade`; extend `BondRisk`, `test_trades` | Leg sizes and signed DV01 neutrality reproduced |
+| **5. Scenario and stress analysis** | `ScenarioAnalysis`; extend `test_trades` | Parallel/steepening/flattening checks and repricing differences explained |
+| **6. Historical Treasury data** | `MarketData`; optional parser tests and Python cleaning | Source/unit checks; historical simulation **go/no-go** |
+| **7. Historical P&L (conditional)** | Optional `DatedBond`, `Backtester`, `CashLedger`, fixtures | Dated cash and cost ledger reconciled, or a clearly stated scenario-only result |
+| **8. Final integration and report** | CMake/CTest, README, status, results, report | Clean reproducible outputs and presentation |
 
-**Immediate coding target:** price the $100-face, 4%-coupon, 2-year semiannual bond at a 5% nominal annual YTM and obtain **$98.1190129**, then confirm par at 4%, monotonicity, zero-coupon pricing, and invalid-input behavior.
+**Scheduling note:** Phase 2 spans Weeks 2–3, Phases 4 and 5 share Week 5. Do not attempt to finish all seven core modules in Week 1.
+
+### Immediate Phase 1 implementation checklist
+
+- [ ] Add `include/treasury/Bond.h` and `src/Bond.cpp`.
+- [ ] Add `include/treasury/BondPricing.h` and `src/BondPricing.cpp`, implementing **only** `priceFromYTM()` initially.
+- [ ] Write `tests/test_bond.cpp` for regular-period coupon cash flows.
+- [ ] Write `tests/test_pricing.cpp` for discount, par and zero-coupon prices.
+- [ ] Update `CMakeLists.txt` to compile the new sources and register the tests.
+- [ ] Run the tests locally; record actual results and then update `PROJECT_STATUS.md`.
+
+**Do not** create the more advanced backtesting classes just because they appear in this specification. The project's value comes from **correct, validated financial models**, not its file count.
+
+---
+
+## 8. Reference documents and financial conventions
+
+- [README.md](../README.md) — scope, milestones, current research approach.
+- [PROJECT_STATUS.md](../PROJECT_STATUS.md) — actual verified progress.
+- [02_math_and_conventions.md](02_math_and_conventions.md) — formulas, units, price/yield convention.
+- [03_trading_strategy.md](03_trading_strategy.md) — 2Y/10Y long/short construction and midpoint scenarios.
+- [04_data_plan.md](04_data_plan.md) — Treasury data and par/zero distinctions.
+- [05_backtest_methodology.md](05_backtest_methodology.md) — hypothetical instruments, cash/financing and limits.
+- [06_validation_plan.md](06_validation_plan.md) — test cases and tolerances.
+- [07_eight_week_roadmap.md](07_eight_week_roadmap.md) — schedule and acceptance gates.
+- [09_decision_log.md](09_decision_log.md) — proposed versus confirmed modeling choices.
+
+**Financial benchmark:** 2-year bond, $100 face, 4% annual coupon, 2 coupons/year, nominal annual YTM 5% compounded semiannually → theoretical price **approximately $98.1190129**. The example is a price formula benchmark, **not a completed software test**.
