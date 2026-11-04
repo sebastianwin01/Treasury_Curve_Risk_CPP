@@ -1,59 +1,47 @@
-# 06 — Testing and validation
+# 06 — Test plan and acceptance criteria for the MVP
 
-Each test has a reason, target result and tolerance. Introduce automated C++ tests after implementing the smallest pricing function; do not mark tests passed until they actually run.
+All financial calculations must be validated by **independent benchmark numbers or logically testable identities**, not only by reusing the same production function in expected values.
 
-## Milestone 1 — Single-YTM bond pricer
-
-| Test | Input | Expected behavior |
+| Phase / proposed test | Independent test | Expected |
 |---|---|---|
-| Discount coupon bond | Face=100, coupon=4%, years=2, m=2, YTM=5% | P≈98.1190129 |
-| At par | Same, YTM=4% | P=100 within tolerance |
-| Zero coupon | Face=100, coupon=0, years=2, m=2, YTM=5% | P=100/(1.025)^4 |
-| Yield monotonicity | Same bond, y=4%,5%,6% | P4% > P5% > P6% |
-| Last cash flow | Face=100, coupon=4%, m=2 | Final payment =102 |
-| Bad input | Negative face, zero m, invalid compounding base | Explicit error/contract |
+| 1 / `test_bond.cpp` | $100 face, 4% coupon, 2Y, semiannual | Four payments: 2, 2, 2, 102 |
+| 1 / `test_pricing.cpp` | Same bond, 5% nominal YTM | **$98.1190129**, tolerance 1e-7 USD |
+| 1 / `test_pricing.cpp` | Same bond, 4% nominal YTM | **$100.00** |
+| 1 / `test_pricing.cpp` | Coupon 0, same YTM/frequency | **$100 / 1.025^4 ≈ $90.59506448** |
+| 1 / `test_pricing.cpp` | Yield increases | Bond price falls |
+| 2 / `test_pricing.cpp` | Solve YTM given price ≈ $98.1190129 | Approximately 5%; documented tolerance |
+| 2 / `test_pricing.cpp` | Invalid price or nonbracketing interval | Explicit error |
+| 3 / `test_risk.cpp` | Analytic modified duration and central bump | Agree within documented tolerance |
+| 3 / `test_risk.cpp` | DV01 finite differences | Positive magnitude and correct $/bp unit |
+| 3 / `test_risk.cpp` | Convexity test | Duration + convexity approximation improves for modest shocks in benchmark |
+| 4 / `test_trade.cpp` | Equal absolute leg dollar DV01 | Signed net first-order parallel DV01 ≈ 0 |
+| 5 / `test_scenarios.cpp` | +10/+10bp | Approx P&L ≈ 0 for DV01-balanced trade |
+| 5 / `test_scenarios.cpp` | +5/+15bp | Positive steepener first-order P&L |
+| 5 / `test_scenarios.cpp` | +15/+5bp | Negative steepener first-order P&L |
+| 5 / `test_scenarios.cpp` | Exact repricing of both bonds | Calculate residual P&L even under parallel bump |
 
-Initially compare money amounts with an absolute tolerance of `1e-8` dollars for simple $100 examples, if numeric implementation permits. Tolerances must be reconsidered for larger notionals.
+**Illustrative-slide checks (separate from actual model DV01):** $190/bp per $1m 2Y, $760/bp per $1m 10Y, long $4m 2Y / short $1m 10Y yields first-order $0, +$7,600, -$7,600 across the three scenarios. This is a test of the **hedge/P&L sign arithmetic**, not a market-data or exact-PV result.
 
-## Milestone 2 — Yield root finder
+## Test engineering rules
 
-- Recover 5% from P≈98.1190129 (within a documented yield tolerance).
-- Recover 4% from P=100.
-- Fail explicitly for invalid bracket, unreachable target or missing cash flows.
-- Verify that the bisection price residual is appropriately small at termination.
+- Use `std::vector` for cash flows, doubles for pricing, sensible `std::size_t` indexing, and explicit input validation.
+- Compare floating-point values with **absolute or relative tolerances**, never exact equality except discrete identities.
+- Include error checks: nonpositive face, nonpositive coupon frequency, unsupported irregular maturity, invalid compounding base, unreachable YTM bracket, NaNs if rejected.
+- Check notional scaling (price per $100 face versus face positions in millions); verify long/short signs.
+- Register tests in **CMake/CTest** as each phase becomes implementable.
+- For each passing phase record the test command and commit SHA in [../PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
-## Milestone 2 — Duration, convexity and DV01
+## Clean checkout release gate
 
-- DV01 positive for a typical long positive-cash-flow fixed-rate bond.
-- Duration positive and less than/equal to maturity for a conventional fixed coupon bond at positive yield (special edge cases need documented assumptions).
-- Compare analytic first and second derivative results with carefully chosen central differences.
-- Compare duration-only, duration+convexity, and actual repriced P&L for ±1bp and ±100bp moves.
+```bash
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+ctest --test-dir build --output-on-failure
+./build/treasury_curve_cli
+```
 
-## Milestone 3 — Curve
+The commands describe the **target**. The existing scaffold has **no financial tests registered**; it is not acceptable to claim a completed regression suite until test targets exist and pass.
 
-- Known discount-factor case: choose arbitrary independent values D(t_k), and verify `Σ CF_k D(t_k)` by hand.
-- Confirm zero-rate/discount conversion is consistent with specified compounding.
-- Document how interpolation affects prices and verify monotonicity/boundaries only when assumptions justify it.
+## Optional add-on validation
 
-## Milestone 4 — Trade sizing
-
-With illustrative per-$1m DV01s `2Y=$190/bp`, `10Y=$760/bp`:
-
-- Long $4m 2Y and short $1m 10Y: first-order **net parallel DV01 ≈0**.
-- Δ2=+5bp, Δ10=+15bp: **approx +$7,600**.
-- Δ2=+15bp, Δ10=+5bp: **approx −$7,600**.
-- Both yields +10bp: **approx $0** (first order only).
-- Reprice full position and observe possible convexity residuals.
-
-## Milestone 5–7 — Historical consistency
-
-- Reject duplicate valuation dates and report missing rate tenors.
-- Reconcile position inventory, coupon schedules and cash ledger.
-- Check that flat-rate/flat-price baselines produce expected carry and financing behavior, not an assumed zero P&L.
-- Recalculate a sample day manually including costs and coupon accrual.
-- Validate no future data enters current decisions or rule parameters.
-- Reproduce selected results on a clean build/machine from documented datasets.
-
-## Test organization
-
-Create C++ test files under `tests/` in later milestones, connect them with CTest, and include a machine-readable benchmark CSV under `data/sample/`. The current root CMake configuration deliberately only builds the scaffold CLI.
+If a zero-rate curve is added, verify discount-factor conversions and coupon-date PV separately. If a descriptive historical series is added, verify rate units, spread-basis-point conversion, date order and missing tenors. **Neither is required to pass the MVP release gate.**

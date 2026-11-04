@@ -1,7 +1,13 @@
-# Test suite (planned)
+# Tests — required for every implemented module
 
-This directory will eventually contain C++20 tests registered through CTest. Start with independent examples in `data/sample/known_price_cases.csv` and `docs/06_validation_plan.md`.
+The MVP's planned test files are:
 
-Suggested modules after each implementation exists: `test_bond_cashflows.cpp`, `test_bond_price.cpp`, `test_ytm.cpp`, `test_sensitivities.cpp`, `test_curve.cpp`, `test_trade_scenarios.cpp`.
+- `test_bond.cpp` — coupons, final principal, invalid specs.
+- `test_pricing.cpp` — `P(5%) ≈ $98.1190129`, par and zero-coupon cases, bisection YTM.
+- `test_risk.cpp` — analytic/finite-difference duration, convexity and DV01.
+- `test_trade.cpp` — signed risk neutrality and notional units.
+- `test_scenarios.cpp` — parallel, steepener and flattener signs; first-order versus exact repricing.
 
-**No tests have been implemented or run as part of this documentation scaffold.**
+Implement and register each test with CTest **when its source module exists**. The current project is still a scaffold with **no confirmed passing financial tests**.
+
+Tests must compare against independent numbers and formulas. See [docs/06_validation_plan.md](../docs/06_validation_plan.md).

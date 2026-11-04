@@ -1,13 +1,7 @@
-# Optional Python research helpers (NO MACHINE LEARNING)
+# Optional non-ML Python utilities
 
-Python may be used for:
+**The required MVP builds and runs without Python or external data downloads.**
 
-- Loading and cleaning dated Treasury rates with pandas.
-- Checking decimal vs. percent conversions and missing dates.
-- Simple descriptive statistics (spread averages, rolling volatility for reporting).
-- Visualizing C++ benchmark prices, rate shifts and P&L output.
-- Generating publication-ready static figures for the report.
+If time remains after validating the five C++ core modules, Python may generate charts of scenario output or produce a **descriptive** historical 10Y-minus-2Y Treasury par-yield spread plot. These are optional visual aids, not required for financial calculations.
 
-Do **not** add ML frameworks, predictive estimators, hidden Markov models or automated signals. C++20 remains the core valuation, risk and strategy-scenario implementation.
-
-No Python scripts have been written in this scaffold.
+Do not build ML, Markov-switching estimation, predictive trading signals or historical executable-return claims here.

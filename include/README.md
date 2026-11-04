@@ -1,12 +1,14 @@
-# Planned C++ interfaces (no completed implementation)
+# C++ headers — five-module MVP
 
-Begin with free functions and simple standard-library containers. Once individual formulas are validated, consider interfaces such as:
+Only add source interfaces when implementing their phases, and keep the CMake build working.
 
-- `CashFlow` (time in years and amount in dollars).
-- `BondSpec` (face amount, coupon rate, payment frequency, maturity/date convention).
-- `price_from_ytm(...)` and `ytm_from_price(...)`.
-- `macaulay_duration(...)`, `modified_duration(...)`, `convexity(...)`, `dv01(...)`.
-- `DiscountCurve` with explicit curve compounding and interpolation.
-- `PortfolioLeg` and `CurveTrade` with signed notionals and instrument identifiers.
+Required phase order:
+1. `treasury/Bond.h` — fixed-coupon bond properties and regular cash flows.
+2. `treasury/BondPricing.h` — YTM price and bisection solver.
+3. `treasury/BondRisk.h` — duration, convexity, DV01.
+4. `treasury/CurveTrade.h` — two signed legs and DV01 matching.
+5. `treasury/ScenarioAnalysis.h` — immediate YTM shocks and P&L.
 
-The sequence is pedagogical: derive and validate before designing abstractions. Do not introduce dynamic owning pointers for numeric arrays already handled by `std::vector`.
+**Optional after MVP only:** `YieldCurve.h` and `MarketData.h`.
+
+Use plain data structures and `std::vector`; no raw owning pointers are required. Names, member types and tests are in [docs/11_technical_architecture.md](../docs/11_technical_architecture.md). `include/treasury/README.md` reserves the directory without pretending classes exist.

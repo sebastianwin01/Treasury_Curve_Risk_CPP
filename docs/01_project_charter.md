@@ -1,51 +1,39 @@
-# 01 — Project charter
+# 01 — Project charter (MVP)
 
 ## Working title
 
 **Treasury Yield Curve Trading and Risk Analysis in C++**
 
-Previous working title included **Regime-Aware**. Because advanced regime inference and ML are excluded, the simpler title accurately describes the core deliverable. A descriptive non-ML regime comparison may be added later, with the original wording restored only if the results justify it.
+## One-sentence outcome
 
-## Main question
+Build a **small, tested C++20 application** to price fixed-coupon Treasury-style bonds, measure duration/convexity/DV01, form a **DV01-balanced 2Y–10Y steepener or flattener**, and compare P&L under **instantaneous hypothetical interest-rate shocks**.
 
-> How do changes in the U.S. Treasury yield curve affect the risk and P&L of DV01-balanced 2-year/10-year relative-value positions?
+## Research question
 
-## Subquestions
+How do parallel and nonparallel changes in the 2Y and 10Y yields affect the risk and **theoretical immediate P&L** of first-order DV01-neutral Treasury-style bond positions?
 
-1. How do coupon payments, interest rates and maturity determine the present value of a fixed-rate bond?
-2. How accurately do DV01 and duration/convexity approximate actual repricing under rate shocks?
-3. How must notionals be set so long 2Y and short 10Y legs have similar DV01 magnitudes?
-4. What happens to such a trade under parallel rate moves, steepening and flattening?
-5. What is the measured historical P&L after reasonable, explicit coupon, aging, rebalancing, financing and cost assumptions?
-6. Which conclusions are robust to changing these assumptions?
+## Required demonstration
 
-## Academic and technical goals
+- Two hypothetical fixed-rate bonds with regular semiannual coupons.
+- Price from YTM; recover YTM by bisection.
+- Macaulay and modified duration, convexity and DV01.
+- Balanced long/short 2Y–10Y positions.
+- Parallel rise, steepening and flattening scenarios; compare first-order P&L and full repricing.
+- Independently validated C++20/CMake/CTest results with financial interpretation.
+- Brief written report and final FQE presentation.
 
-- Apply present value, basic fixed-income mathematics, calculus and numerical methods.
-- Demonstrate readable, tested C++20 with appropriate use of the standard library and RAII.
-- Bridge math with economic interpretation; avoid copying large quantities of finished code without deriving it.
-- Make the work reproducible from documented inputs, configurations and test cases.
+## Mandatory assumptions and boundaries
 
-## Deliverables
+Synthetic **fixed-coupon Treasury-style** examples, $100-face quotation basis, nominal annual YTMs and regular semiannual payments. Parallel shocks mean equal changes in the **two instrument YTMs**. The scenario holds instrument cash flows and remaining maturities constant while bumping yields; no passage of time, accrued interest, financing, rebalancing, coupons during the holding period, transaction costs or actual prices.
 
-1. Mathematical notes and specified assumptions.
-2. Small validated C++ bond-pricing and risk functions.
-3. Readable data-cleaning and curve inputs.
-4. DV01-neutral 2Y–10Y scenario engine.
-5. Historically informed research results with limitations; no claim of executable profits from fitted curves alone.
-6. Final charts, technical report, README and FQE presentation.
+The baseline is **risk/scenario research**, not a historical trading P&L or proof of alpha. No ML, Markov-switching, forecasting, brokerage integration or live execution.
 
-## Team/process
+## Stretch, not a completion requirement
 
-Roles, specific presentation date and GitHub repository URL remain unconfirmed in the provided project context; do not invent these details. Use a decision log for agreements and owners.
+A simple **zero/discount curve** and descriptive **historical Treasury par-yield spread** may be added **after passing the MVP**. A dated bond portfolio simulation with short borrow, funding, accrual, coupons and rebalancing is a **separate future extension**, not the eight-week requirement.
 
-## Exclusions
+## Constraints and acceptance
 
-- Machine learning, neural networks, ML forecasting, HMMs and Markov-switching regimes.
-- Unvalidated or speculative profitability claims.
-- Broker integration, actual trading, derivative and credit models.
-- Overengineered class hierarchies or unnecessary dependencies in the first phase.
+Plan for about **5–7 hours/week over eight weeks**, including reading, implementation and testing. A reviewer should clone, build and reproduce the numerical benchmark and scenario table without external market data. Quality and reproducibility take priority over feature count.
 
-## Success criteria
-
-A reviewer can run documented checks, reproduce benchmark bond pricing and risk results, understand exactly how trade positions are sized, and trace each historical result back to data and assumptions.
+Progress belongs in [../PROJECT_STATUS.md](../PROJECT_STATUS.md); API specification: [11_technical_architecture.md](11_technical_architecture.md).

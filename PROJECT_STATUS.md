@@ -1,55 +1,53 @@
-# Project status and validation gates
+# Project status — achievable FQE MVP
 
-**Repository assessment:** Documentation and a C++20 console scaffold are present. At the latest reviewed `main` commit, `src/main.cpp` is a placeholder. No bond-pricing implementation, automated test executable, historical data-processing pipeline, instrument-level valuation or trading backtest has been verified in the repository.
+**Review date:** 2026-11-04  
+**Current evidence:** Project specification, C++20 CMake scaffold, benchmark CSV and documentation are in the repository. The actual bond-pricing engine, portfolio analysis and automated financial tests **have not been implemented or validated**.
 
-**Status semantics:**
-- **Complete** = deliverable is committed and independently reproduced/validated.
-- **In progress** = implementation or evidence exists, but validation is incomplete.
-- **Not started** = planned in documentation only.
-- An independently computed **benchmark value does not count as a passed C++ test**.
+## What counts as complete?
 
-## Confirmed setup tasks
+A phase is complete **only when code is committed, can be built and has reproducible tests/results**. A documented formula or hand-computed expected value is not a passed software test.
 
-- [x] Define the 2Y–10Y fixed-income research question and scope.
-- [x] Exclude machine learning and Markov-switching models.
-- [x] Commit the C++20 CMake console scaffold and documentation structure.
-- [x] Specify benchmark expectations and a validation plan.
-- [ ] Implement and run an automated C++ financial test.
+## Setup
 
-## Implementation-phase tracking
+- [x] Fix research question: 2Y–10Y DV01-neutral shock P&L.
+- [x] Confirm C++20, no ML, no live trading.
+- [x] Reduce required scope to immediate YTM-shock scenarios.
+- [x] Provide an eight-phase learning/implementation plan.
+- [x] Establish benchmark input files.
+- [ ] Deliver first working bond-pricing implementation and automated test.
 
-| Phase | Status | Evidence required to mark complete |
+## Eight phase gates
+
+| Phase | Current status | Must be demonstrated |
 |---|---|---|
-| **1. Bond pricing fundamentals** | Not started | Cash-flow generator and `price_from_ytm` implemented, benchmark/par/yield-monotonicity tests passing |
-| **2. Yield solving and risk sensitivities** | Not started | Bisection solver with convergence checks; duration, convexity and DV01 cross-checked against full repricing |
-| **3. Treasury yield curves** | Not started | Defined curve inputs and interpolation; discount-factor conversion verified and coupon-date curve pricing tested |
-| **4. 2Y–10Y portfolio construction** | Not started | Documented instrument and size units, DV01-matched long/short legs and parallel exposure checks |
-| **5. Scenario and stress analysis** | Not started | Parallel, steepening, flattening and large-move scenarios, analytic/finite-difference versus full P&L results |
-| **6. Historical Treasury data** | Not started | Source/provenance, repeatable download/transform, normalized rate conventions, gaps and sample-period report |
-| **7. Historical P&L and backtesting** | Not started | Synthetic instruments/coupons/aging, daily cash ledger, funding and costs, reported errors/limits; only if supportable |
-| **8. Final integration and research report** | Not started | Clean build, tests, reproducible figures/tables, research conclusions, limitations and presentation |
+| 1. Bond and pricing | Not started | Correct regular coupons; $98.1190129 price, $100 par |
+| 2. YTM solver | Not started | Recover original yield; invalid bracket fails clearly |
+| 3. Risk metrics | Not started | Duration, convexity and DV01 independently checked |
+| 4. Balanced trade | Not started | 2Y long/10Y short with near-zero signed parallel DV01 |
+| 5. Stress scenarios | Not started | Three signed shock examples and exact repricing |
+| 6. Test integration | Not started | Registered passing CTest cases; clean build |
+| 7. Results and interpretation | Not started | Reproducible table, units and limitations; history optional |
+| 8. Final report | Not started | Documented reproducible FQE presentation/report |
 
-**Optional only after core validation:** prespecified, retrospective non-ML descriptive comparisons of curve regimes. This is not part of the required eight phases.
+## Mandatory MVP output
 
-## Review gates
+1. Reference bond price test using `data/sample/known_price_cases.csv`.
+2. Unit tests for YTM, duration, DV01, hedge weights and P&L signs.
+3. One table comparing parallel +10/+10bp, steepening +5/+15bp and flattening +15/+5bp scenarios.
+4. Both **DV01 first-order P&L** and **exact two-YTM repricing**; no claim that either is realized P&L.
+5. Console command and CMake/CTest instructions in the README.
 
-- [ ] **Gate A — end Week 2:** prices, par cases, cash flows and YTM solver reconcile against independent calculations.
-- [ ] **Gate B — end Week 3:** analytic/finite-difference interest-rate risk measures and unit conventions validated.
-- [ ] **Gate C — end Week 5:** 2Y–10Y sizing, exposure signs and rate-shock scenario P&L independently checked.
-- [ ] **Gate D — end Week 7:** if historical results exist, their instrument definitions, coupon ledger and assumptions are documented and reproducible. Otherwise publish **scenario-only** findings honestly.
-- [ ] **Gate E — end Week 8:** final submitted claims match reproducible code and data; no unlabeled synthetic or hypothetical returns.
+The illustrative `$190 / $760 per $1m` slide values are **separate reference assumptions**; do not hard-code them as if calculated by the bond pricer.
 
-## Next engineering actions
+## Deferred — NOT blockers for completion
 
-1. Create `include/BondPricing.h` and `src/BondPricing.cpp` with a small, well-defined pricing API.
-2. Implement regular fixed-coupon cash-flow generation and YTM pricing.
-3. Add `tests/test_bond_pricing.cpp`, hook it into CMake/CTest, and verify `data/sample/known_price_cases.csv` cases.
-4. Mark Phase 1 **complete only when tests actually run and pass**.
-5. Start investigating usable Treasury **curve** data during Phase 3, even though data cleaning is scheduled for Week 6.
+- [ ] Zero-curve coupon-date pricing (optional).
+- [ ] Observed Treasury 2Y–10Y par-yield spread chart (optional).
+- [ ] Full synthetic historical portfolio backtest, coupon calendar, financing and short-borrow ledger (future project).
+- [ ] Markov switching, ML or predictive models (**excluded**).
 
-## Tracking rules
+## Next smallest task
 
-When closing a phase, record commit SHA, commands used, reference calculation, tolerance, assumptions and reviewer (if applicable). Do not infer progress from repository scaffolding or documentation alone.
+Implement `Bond.h`/`Bond.cpp` (cash flows) and `BondPricing.h`/`BondPricing.cpp` (price from YTM); add a test file and a CTest target. **Do not mark Phase 1 complete until tests pass.** See [Phase 1 work order](docs/12_start_here.md).
 
-See [eight-week roadmap](docs/07_eight_week_roadmap.md), [validation plan](docs/06_validation_plan.md), and [decision log](docs/09_decision_log.md).
-
+Every future completed phase should record the **commit SHA**, test command and numerical tolerance.

@@ -1,50 +1,39 @@
-# 04 — Historical data plan
+# 04 — Data plan: minimum inputs first
 
-## Sources to investigate
+## Required for the MVP — no download dependency
 
-1. **Federal Reserve — U.S. Treasury Nominal Yield Curve**: https://www.federalreserve.gov/data/nominal-yield-curve.htm
-   - Provides fitted nominal curve information. Check the specific available series, estimation method, conventions and date coverage before choosing zero/discount inputs.
-2. **U.S. Treasury — Interest Rate Statistics**: https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics
-   - Daily constant-maturity par Treasury yields can support descriptive 2Y/10Y spread studies; they are **not** a curve of coupon-date zero rates and are **not** executed security prices.
-3. For actual-security valuation (future scope), documented bond-specific coupons, maturity dates, market prices, settlement and accrual rules are needed.
+The **completed core must run offline** using small, synthetic input cases:
 
-## Data distinctions
+- `data/sample/known_price_cases.csv` contains independent $100-face pricing benchmarks.
+- `data/sample/illustrative_trade_scenarios.csv` stores the three midpoint-slide **assumed-DV01** linear P&L examples.
+- Additional 2Y/10Y coupon/yield inputs may be hard-coded in focused unit tests or saved to a small reproducible CSV.
 
-- **Par yield:** yield of a hypothetical par-coupon bond with a chosen maturity. Good for simple 2Y/10Y curve level/slope monitoring.
-- **Zero yield:** directly related, after compounding specification, to discount factors for *individual dates*.
-- **Bond YTM:** one rate solving the market price of a particular coupon bond.
-- **Tradable price:** price of a specific Treasury instrument at a specific observation time; not supplied directly by a fitted yield alone.
+These benchmarks are **not** current market quotes and should be clearly labeled.
 
-**Never treat any of these as interchangeable without a documented transformation.**
+## Optional: descriptive 2Y–10Y Treasury history
 
-## Proposed raw schema
+A simple plot of the 10Y minus 2Y **par yield spread** is useful context, but **not necessary to finish** the C++ risk engine.
 
-`date,source,series_type,maturity_years,yield_percent,compounding,observation_status`
+Possible public source: [U.S. Treasury interest-rate statistics](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics). Verify the units, definitions, covered dates and source revisions when data are actually acquired.
 
-- Date in ISO `YYYY-MM-DD`.
-- `series_type`: `par`, `zero`, or another explicitly described convention.
-- Store original quoted units and add normalized decimal-rate fields during cleaning.
-- `observation_status` flags source-identified missing or unavailable observations.
+Proposed normalized data:
 
-## Proposed clean long-form schema
+```text
+date,y2_par_decimal,y10_par_decimal,spread_bp
+```
 
-`date,source,maturity_years,rate_decimal,rate_type,compounding,quality_flag`
+Compute `spread_bp = 10000 * (y10_par_decimal - y2_par_decimal)`. Handle missing observations by reporting or skipping gaps; **do not fabricate weekend/holiday trading observations**.
 
-For a 2Y/10Y descriptive study, pivot to a consistent daily pair only if both tenors are available on that day. Preserve missing observation flags; **do not invent weekend or holiday observations**.
+## Financial distinction — essential
 
-## Data validation
+**Par yields ≠ bond YTM ≠ zero-coupon rates ≠ bond-specific executable quotes.** Descriptive par spreads are acceptable as historical context, but are **not sufficient** to mark coupon bonds at dated market prices or to claim actual portfolio P&L.
 
-- Log acquisition date, dataset/source URL, filters, parsing code, and checksum if possible.
-- Confirm dates are monotonic after sorting; remove exact duplicates deterministically.
-- Validate yield units: source percentage `4.2` should be normalized to decimal `0.042`, not `4.2`.
-- Track missing periods/tenors, definition changes, source revisions and suspicious outliers.
-- Exclude look-ahead data from every rule used in a historical backtest.
-- Keep `data/raw` and `data/processed` files untracked by default unless licensing and size permit redistribution.
+A future **zero-curve** extension would need maturity-specific curve inputs and well-specified compounding/interpolation. The [Fed fitted Treasury yield curve](https://www.federalreserve.gov/data/nominal-yield-curve.htm) may be considered later, with its specific series and estimation assumptions documented.
 
-## Minimal milestones
+## Go/no-go
 
-**First:** inspect a small sample of daily 2Y and 10Y par yields to compute slope, trend and changes.
+- **Always deliver MVP:** numerical pricing, risk and stress tests with entirely synthetic inputs.
+- **If time permits:** optional descriptive historical spread chart with provenance and no strategy-return claims.
+- **Never required:** a fully financed, coupon-aware historical bond simulation.
 
-**Then:** choose and document a curve representation appropriate for bond repricing, potentially using a fitted zero/discount curve plus interpolation. Validate against independent calculations and document approximation limitations.
-
-**Finally:** determine whether you can support actual-instrument historical P&L. Otherwise call the results *hypothetical curve-shock P&L* or *synthetic valuation*, not executable returns.
+More detailed future requirements are explained in [05_backtest_methodology.md](05_backtest_methodology.md).

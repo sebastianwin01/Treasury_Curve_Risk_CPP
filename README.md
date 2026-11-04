@@ -1,100 +1,104 @@
 # Treasury Yield Curve Trading and Risk Analysis in C++
 
-**Baruch FQE fixed-income research project | Fall 2026 | C++20**
+**Baruch FQE | C++20 | Fixed income | Non-ML**
 
 ## Research question
 
-**How do changes in the U.S. Treasury yield curve affect the risk and profit/loss (P&L) of DV01-balanced 2-year versus 10-year Treasury steepener and flattener positions?**
+**How do interest-rate shocks affect the risk and theoretical P&L of a DV01-balanced 2-year versus 10-year Treasury-style steepener or flattener?**
 
-**Goal:** Develop a transparent, reproducible C++20 framework to price conventional fixed-coupon bonds, measure interest-rate risk, construct DV01-balanced 2Y–10Y trades, evaluate deterministic shocks, and, if defensible data are available, analyze **synthetic historical** position P&L.
+## Minimum viable project (MVP)
 
-This is an **educational quantitative research and paper-simulation project**, not a trading recommendation or execution system. The core objective is correct mathematics, traceable assumptions and numerical validation—not predicted returns.
+Build **one small, reproducible C++20 console application** that:
 
-## Scope
+1. Creates two hypothetical **fixed-coupon** bonds (2 years and 10 years) with regular semiannual payments.
+2. Calculates their cash flows, prices from nominal annual YTM, and YTM from price.
+3. Computes Macaulay and modified duration, convexity, and **dollar DV01 per 1bp**.
+4. Constructs **DV01-balanced** long-2Y/short-10Y and reverse positions.
+5. Tests **parallel**, **steepening** and **flattening** immediate yield shocks using both first-order P&L and full repricing.
+6. Runs C++ automated tests and prints/reproduces a small results table.
 
-**Included:** U.S. nominal fixed-rate Treasury-style instruments, bond cash flows, YTM and curve-based valuation, duration/convexity/DV01, 2Y–10Y position sizing, parallel/nonparallel rate shocks, historical data preparation, synthetic valuation and research reporting. Python may support non-ML data preparation and visualization; C++20 is the core analytics implementation.
+**Definition of done:** a fresh clone builds with CMake, automated tests pass, reference bond pricing is reproduced, trade exposure signs are correct, and one clearly labeled hypothetical scenario table is produced. A historical trading backtest is **not required**.
 
-**Excluded:** Machine learning, forecasting models, Markov switching/HMMs, stochastic term-structure model calibration, live order execution, swaps/futures trading, credit products and an institutional-grade trading system. Simple **descriptive** comparisons (e.g., inverted versus upward-sloping curves) are optional only after the core works.
+### Explicit simplifying assumptions
 
-## Eight implementation phases
+- Hypothetical **Treasury-style** bonds, not actual identified securities or executable quotes.
+- Valuation per **$100 face**, scaled by face notional when sizing positions.
+- Fixed coupons, **regular semiannual periods**, and simple nominal annual YTM; no settlement calendars, accrued-interest/clean-price handling, reinvestment, rebalancing, or financing in the immediate-shock scenarios.
+- At scenario time 0, shift the **2Y bond's YTM** by `Δy2` and the **10Y bond's YTM** by `Δy10`; reprice unchanged cash flows. This is a **two-YTM scenario model**, **not** a fitted full zero curve or a market-executable backtest.
+- Long 2Y/short 10Y is a steepener. Match initial absolute leg DV01s to reduce **first-order parallel yield sensitivity**, not all risks.
+- No machine learning, Markov switching, signal forecasting or live orders.
 
-| Phase | Timing | Focus | Acceptance deliverable |
-|---|---|---|---|
-| **1. Bond pricing fundamentals** | Week 1 | Fixed coupons, principal repayment, present value and single-YTM pricing | Independently checked bond cash flows and `price_from_ytm` |
-| **2. Yield solving and risk sensitivities** | Weeks 2–3 | YTM bisection, Macaulay/modified duration, convexity and DV01 | Validated numerical solver and risk functions |
-| **3. Treasury yield curves** | Week 4 | Spot/par/YTM distinctions, discount factors and documented interpolation | Small `YieldCurve` representation and curve-priced bond |
-| **4. 2Y–10Y portfolio construction** | Week 5 | Long/short exposure, DV01 matching and explicit hedge units | Position-sizing rules with checked exposure |
-| **5. Scenario and stress analysis** | Week 5 | Parallel, steepener, flattener and larger shocks; full repricing | Deterministic scenario P&L versus DV01/convexity approximations |
-| **6. Historical Treasury data** | Week 6 | Data source, normalized rates, missing values and data provenance | Reproducible curated dataset, with valuation limitations |
-| **7. Historical P&L and backtesting** | Week 7 | Synthetic bond aging, cash flows, funding/cost assumptions and sensitivity | Clearly labeled synthetic historical results **if feasible** |
-| **8. Final integration and research report** | Week 8 | Regression checks, charts, limitations and presentation | Reproducible documented results and FQE report |
+## Scope ladder
 
-The phases are **implementation stages**, not a claim that work has already been completed. Investigate historical data suitability as early as Phase 3; do not postpone feasibility checks until Week 6. See [the roadmap](docs/07_eight_week_roadmap.md) and [current status](PROJECT_STATUS.md).
+| Tier | Scope | Needed for FQE final? |
+|---|---|---|
+| **MVP — required** | Bond pricing, YTM, risk, DV01-matched trade, immediate shocks, CTest, scenario table | **Yes** |
+| **Stretch A** | Basic zero-rate discount curve and coupon-date pricing, with explicit rate conventions | No |
+| **Stretch B** | Descriptive historical 2Y–10Y spread from observed par-yield series; no simulated bond returns | No |
+| **Future research** | Actual dated synthetic instruments, accrued interest, coupons, financing, rebalancing and historical portfolio P&L | **No** |
 
-## Valuation approaches and what results mean
+The MVP requires **five C++ modules**: `Bond`, `BondPricing`, `BondRisk`, `CurveTrade` and `ScenarioAnalysis`. `YieldCurve` and `MarketData` are **optional modules** and will only be created after the MVP passes.
 
-**Single-yield model for the first bond exercise:**
+## Eight concrete work phases
+
+| Phase | Work | Exit evidence |
+|---|---|---|
+| **1** | Bond, regular cash flows and pricing | $100 / 4% / 2Y / 5% benchmark and par case pass |
+| **2** | YTM bisection | Solver recovers 5% and handles bad brackets |
+| **3** | Duration, convexity and DV01 | Independent finite-difference checks pass |
+| **4** | DV01-neutral 2Y–10Y trade sizing | Equal-and-opposite signed parallel DV01 |
+| **5** | Three immediate shock scenarios | First-order and exact-repricing P&L table |
+| **6** | Automated regression and edge cases | CTest suite and clean CMake build |
+| **7** | Reproduce results; optional descriptive historical spread | Documented output with units and assumptions |
+| **8** | Final readme, charts, report and FQE presentation | Reviewer can clone, run, explain and reproduce |
+
+See [the detailed schedule](docs/07_eight_week_roadmap.md), [technical architecture](docs/11_technical_architecture.md), and [Phase 1 instructions](docs/12_start_here.md).
+
+## Repository status
+
+**Documentation/planning is present.** Financial classes and tests described above are a **target**, not already implemented. The committed `src/main.cpp` remains a starter console program. Check [PROJECT_STATUS.md](PROJECT_STATUS.md) for verified work, not intended progress.
+
+## Planned MVP source layout
 
 ```text
-P(y) = SUM_{k=1}^{N} CF_k / (1 + y/m)^k
+include/treasury/
+    Bond.h                 [Phase 1]
+    BondPricing.h          [Phases 1-2]
+    BondRisk.h             [Phase 3]
+    CurveTrade.h           [Phase 4]
+    ScenarioAnalysis.h     [Phase 5]
+src/
+    Bond.cpp
+    BondPricing.cpp
+    BondRisk.cpp
+    CurveTrade.cpp
+    ScenarioAnalysis.cpp
+    main.cpp               [exists; placeholder]
+tests/
+    test_bond.cpp
+    test_pricing.cpp
+    test_risk.cpp
+    test_trade.cpp
+    test_scenarios.cpp
+data/sample/
+    known_price_cases.csv  [exists]
+    illustrative_trade_scenarios.csv [reference only]
 ```
 
-Here `y` is nominal annual YTM (decimal), `m` coupons per year, and `CF_k` is the cash flow at regular coupon period `k`.
+**Create implementation files only as their phase starts.** The full planned tree and APIs are in [docs/11_technical_architecture.md](docs/11_technical_architecture.md).
 
-**Curve-based valuation for later scenarios:**
+## Independent numerical benchmarks
+
+A hypothetical **$100 face, 4% annual coupon, 2-year, semiannual** bond has cash flows `[2, 2, 2, 102]`. At nominal annual 5% YTM compounded semiannually:
 
 ```text
-P_curve = SUM_{k=1}^{N} CF_k * D(t_k)
+P = 2/1.025 + 2/1.025^2 + 2/1.025^3 + 102/1.025^4
+  ≈ $98.1190129
 ```
 
-`D(t_k)` is a cash-flow-date discount factor derived from a correctly specified term structure. **Treasury constant-maturity par yields are not zero rates, discount factors, bond-specific YTMs or executable bond prices.**
+At 4% YTM it prices at **$100**. For validation, a separate illustrative trade from the FQE midpoint slides assumes **2Y DV01 $190/bp per $1m**, **10Y DV01 $760/bp per $1m**, long **$4m 2Y** and short **$1m 10Y**, so each leg has **$760/bp** exposure. Under +5bp 2Y / +15bp 10Y, first-order P&L is **+$7,600**. **These assumed DV01s are not expected to equal the DV01s computed for the example coupon bonds.**
 
-**Historical target:** synthetic bonds with specified inception coupons and maturity dates, repriced through time using documented curve inputs. Any P&L from fitted or synthesized yields must be labeled **synthetic / simulated**, never realized market performance. If appropriate curve inputs or conventions cannot be established, deliver rigorous scenario research instead of an unsupported historical backtest. See [backtest methodology](docs/05_backtest_methodology.md).
-
-## Repo structure
-
-```text
-Treasury_Curve_Risk_CPP/
-├── README.md
-├── PROJECT_STATUS.md
-├── CMakeLists.txt
-├── .gitignore
-├── docs/
-│   ├── 01_project_charter.md
-│   ├── 02_math_and_conventions.md
-│   ├── 03_trading_strategy.md
-│   ├── 04_data_plan.md
-│   ├── 05_backtest_methodology.md
-│   ├── 06_validation_plan.md
-│   ├── 07_eight_week_roadmap.md
-│   ├── 08_reading_map.md
-│   ├── 09_decision_log.md
-│   └── 10_final_report_outline.md
-├── include/               # Interfaces: future work
-├── src/main.cpp            # Console scaffold only, as of current review
-├── tests/                  # Automated tests: planned
-├── data/
-│   ├── sample/known_price_cases.csv
-│   ├── raw/
-│   └── processed/
-├── python/                 # Optional non-ML data utilities
-└── results/                # Outputs, not yet produced
-```
-
-## First verified target: Milestone 1
-
-Hypothetical bond: face **$100**, annual coupon **4%**, maturity **2 years**, semiannual coupons, nominal annual YTM **5%** with semiannual compounding.
-
-- Four cash flows: **$2, $2, $2, $102**.
-- Price at 5% YTM: approximately **$98.1190129**.
-- Price at 4% YTM: **$100**.
-- Higher YTM must lower the price for these positive fixed cash flows.
-
-The target numbers are independent benchmarks; **the C++ function has not yet been implemented or tested in the committed repository**. Start with a simple function and tests, not a large class hierarchy. Test plan: [docs/06_validation_plan.md](docs/06_validation_plan.md).
-
-## Build the current scaffold
-
-Open the root directory in CLion or run:
+## Build the current console scaffold
 
 ```bash
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
@@ -102,17 +106,18 @@ cmake --build build
 ./build/treasury_curve_cli
 ```
 
-These are build commands, **not evidence that validation tests have passed**. At the time of this documentation update, the main C++ executable is still a placeholder, and no pricing engine, historical data pipeline or backtest is committed.
+Once tests are written and registered in CMake, also run:
 
-## Development method
+```bash
+ctest --test-dir build --output-on-failure
+```
 
-Financial intuition → mathematical derivation → independently worked example → algorithm → C++20 implementation → automated tests → financial interpretation → engineering improvements.
+**CTest does not currently contain financial tests; this command is a future acceptance step.**
 
-Every completed phase must have its conventions, code and independent validation documented. Keep **confirmed decisions**, **proposed defaults** and **unresolved choices** separate in [docs/09_decision_log.md](docs/09_decision_log.md).
+## References and caveats
 
-## References
+- Bruce Tuckman and Angel Serrat, *Fixed Income Securities: Tools for Today's Markets*, 4th ed. (2022), especially Chapters 1, 3 and 4.
+- [U.S. Treasury rate statistics](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) — useful for optional descriptive 2Y–10Y par-yield history; **not executable bond prices**.
+- [Federal Reserve Treasury Nominal Yield Curve](https://www.federalreserve.gov/data/nominal-yield-curve.htm) — possible future curve-data extension requiring verified conventions.
 
-- Bruce Tuckman and Angel Serrat, *Fixed Income Securities: Tools for Today's Markets*, 4th ed. (2022), especially Chapters 1–6.
-- [Federal Reserve — Treasury Nominal Yield Curve](https://www.federalreserve.gov/data/nominal-yield-curve.htm) (fitted curve inputs; verify series and conventions).
-- [U.S. Treasury — Interest Rate Statistics](https://home.treasury.gov/policy-issues/financing-the-government/interest-rate-statistics) (par-yield history useful for descriptive analysis; not executable security prices).
-
+All scenario profits are **hypothetical immediate repricing effects**, not actual or historical returns.

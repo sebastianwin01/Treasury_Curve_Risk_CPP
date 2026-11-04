@@ -1,0 +1,4 @@
+scenario,delta_2y_bp,delta_10y_bp,illustrative_first_order_pnl_usd,assumption
+parallel_rise,10,10,0,"long 4m 2Y short 1m 10Y; assumed DV01 190/760 dollars per bp per 1m"
+steepening,5,15,7600,"long 4m 2Y short 1m 10Y; assumed DV01 190/760 dollars per bp per 1m"
+flattening,15,5,-7600,"long 4m 2Y short 1m 10Y; assumed DV01 190/760 dollars per bp per 1m"
