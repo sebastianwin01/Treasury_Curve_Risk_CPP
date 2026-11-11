@@ -1,19 +1,84 @@
-.DS_Store
-.idea/
+
+# ==============================
+# Visual Studio
+# ==============================
+.vs/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+*.VC.db
+*.VC.opendb
+*.VC.VC.opendb
+ipch/
+
+# ==============================
+# CMake
+# ==============================
 build/
+out/
 cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+CTestTestfile.cmake
+Testing/
+compile_commands.json
+CMakeUserPresets.json
+
+# ==============================
+# Compiled C++ Files
+# ==============================
+*.obj
 *.o
+*.exe
+*.dll
+*.lib
 *.a
 *.so
 *.dylib
-*.exe
-__pycache__/
-.venv/
-.ipynb_checkpoints/
-.pytest_cache/
-data/raw/*
-!data/raw/README.md
-data/processed/*
-!data/processed/README.md
-results/*
-!results/README.md
+
+# ==============================
+# Debugging Files
+# ==============================
+*.pdb
+*.idb
+*.ilk
+*.ipch
+*.iobj
+*.ipch
+*.tlog
+*.lastbuildstate
+*.log
+
+# ==============================
+# Build Configurations
+# ==============================
+Debug/
+Release/
+RelWithDebInfo/
+MinSizeRel/
+x64/
+x86/
+Win32/
+
+# ==============================
+# Other IDEs
+# ==============================
+.idea/
+.vscode/
+
+# ==============================
+# Operating Systems
+# ==============================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ==============================
+# Temporary Files
+# ==============================
+*.tmp
+*.bak
+*.swp
+*~
