@@ -9,24 +9,29 @@ struct CashFlow {
     double amountUsd{};
 };
 
-template <typename T>
 class Bond {
+
 private:
-    T faceValueUsd_;
-    T annualCouponRate_;
-    T maturityYears_;
+    double faceValueUsd_;
+    double annualCouponRate_;
+    double maturityYears_;
     int couponsPerYear_;
 
 public:
-    Bond(T faceValueUsd,
-         T annualCouponRate,
-         T maturityYears,
+    // Constructor
+    Bond(double faceValueUsd,
+         double annualCouponRate,
+         double maturityYears,
          int couponsPerYear);
 
-    T faceValueUsd() const noexcept;
-    T annualCouponRate() const noexcept;
-    T maturityYears() const noexcept;
+    // Getters
+    double faceValueUsd() const noexcept;
+    double annualCouponRate() const noexcept;
+    double maturityYears() const noexcept;
     int couponsPerYear() const noexcept;
+
+    // Cash flow generation
+    std::vector<CashFlow> cashFlows() const;
 };
 
 }
