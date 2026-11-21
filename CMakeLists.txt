@@ -8,6 +8,8 @@ add_executable(treasury_curve_cli
     src/main.cpp
     src/Bond.cpp
     src/BondPricing.cpp
+        include/treasury/CurveTrade.h
+        src/CurveTrade.cpp
 )
 
 target_include_directories(treasury_curve_cli PRIVATE include)

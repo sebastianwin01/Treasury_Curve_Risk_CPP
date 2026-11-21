@@ -29,6 +29,7 @@ public:
     double annualCouponRate() const noexcept;
     double maturityYears() const noexcept;
     int couponsPerYear() const noexcept;
+    int totalPeriods() const noexcept;
 
     // Cash flow generation
     std::vector<CashFlow> cashFlows() const;
